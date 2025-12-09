@@ -11,10 +11,17 @@ import {
 import { relations } from "drizzle-orm";
 
 // Enums
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "moderator"]);
 export const videoVisibilityEnum = pgEnum("video_visibility", [
   "public",
   "private",
   "unlisted",
+]);
+export const videoStatusEnum = pgEnum("video_status", [
+  "draft",
+  "pending",
+  "published",
+  "rejected",
 ]);
 
 // Users table
@@ -29,6 +36,9 @@ export const users = pgTable(
     imageURL: text("image_url").notNull(),
     bannerURL: text("banner_url"),
     description: text("description"),
+    role: userRoleEnum("role").default("user").notNull(),
+    isBanned: boolean("is_banned").default(false).notNull(),
+    banReason: text("ban_reason"),
   },
   (t) => [uniqueIndex("clerk_id_idx").on(t.clerkId)]
 );
@@ -41,6 +51,8 @@ export const videos = pgTable("videos", {
   thumbnailURL: text("thumbnail_url"),
   videoURL: text("video_url"),
   visibility: videoVisibilityEnum("visibility").default("private").notNull(),
+  status: videoStatusEnum("status").default("draft").notNull(),
+  rejectionReason: text("rejection_reason"),
   duration: integer("duration").default(0),
   viewCount: integer("view_count").default(0).notNull(),
   likeCount: integer("like_count").default(0).notNull(),

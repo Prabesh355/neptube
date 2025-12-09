@@ -4,6 +4,7 @@ import { usersRouter } from "./users";
 import { videosRouter } from "./videos";
 import { commentsRouter } from "./comments";
 import { subscriptionsRouter } from "./subscriptions";
+import { adminRouter } from "./admin";
 
 export const appRouter = createTRPCRouter({
   // Keep hello for testing
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   videos: videosRouter,
   comments: commentsRouter,
   subscriptions: subscriptionsRouter,
+  admin: adminRouter,
 });
 
 // export type definition of API

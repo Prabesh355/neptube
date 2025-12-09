@@ -57,3 +57,28 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
   });
 });
+
+// Admin procedure - requires admin or moderator role
+export const adminProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.clerkId || !ctx.user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "You must be logged in to perform this action",
+    });
+  }
+
+  if (ctx.user.role !== "admin" && ctx.user.role !== "moderator") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to access this resource",
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      clerkId: ctx.clerkId,
+      user: ctx.user,
+    },
+  });
+});
