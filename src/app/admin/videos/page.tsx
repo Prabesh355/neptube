@@ -145,6 +145,7 @@ export default function AdminVideosPage() {
               <TableHead>Video</TableHead>
               <TableHead>Creator</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Approved</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -202,6 +203,13 @@ export default function AdminVideosPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(video.status)}</TableCell>
                   <TableCell>
+                    {video.approved ? (
+                      <Badge className="bg-green-100 text-green-800">Approved</Badge>
+                    ) : (
+                      <Badge className="bg-yellow-100 text-yellow-800">Unapproved</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-1">
                       <Eye className="h-4 w-4 text-gray-400" />
                       {video.viewCount.toLocaleString()}
@@ -212,29 +220,30 @@ export default function AdminVideosPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {video.status === "pending" && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 hover:text-green-700"
-                            onClick={() => handleApprove(video.id)}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleReject(video.id)}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
-                        </>
+                      <Badge className="bg-blue-100 text-blue-800">{video.status} | approved: {String(video.approved)}</Badge>
+                      {(video.status === "pending" || (video.status === "published" && (video.approved === false || video.approved === null || typeof video.approved === "undefined"))) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => handleApprove(video.id)}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
                       )}
-                      {video.status === "published" && (
+                      {video.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleReject(video.id)}
+                        >
+                          <X className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      )}
+                      {video.status === "published" && video.approved && (
                         <Button
                           size="sm"
                           variant="outline"

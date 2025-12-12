@@ -49,6 +49,7 @@ export default function UploadVideoPage() {
   const router = useRouter();
   const [step, setStep] = useState<"upload" | "details" | "done">("upload");
   const [videoUrl, setVideoUrl] = useState("");
+  // Only one video file is now supported
   const [videoName, setVideoName] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -173,39 +174,27 @@ export default function UploadVideoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!videoUrl || !title) {
-      toast.error("Missing required fields", {
-        description: "Please upload a video and enter a title",
-      });
+      alert("Please upload a video file and enter a title");
       return;
     }
-
-    // Use uploaded/AI thumbnail, or extracted frame, or nothing
-    let finalThumbnailUrl = thumbnailUrl;
-    
-    // If no custom thumbnail but we have extracted frames, use the selected one
-    if (!finalThumbnailUrl && extractedFrames.length > 0 && extractedFrames[selectedFrameIndex]) {
-      finalThumbnailUrl = extractedFrames[selectedFrameIndex].dataUrl;
-    }
-
     setIsSubmitting(true);
-    
     createVideo.mutate({
       title,
       description,
       videoURL: videoUrl,
-      thumbnailURL: finalThumbnailUrl || undefined,
+      qualities: undefined, // No multi-quality support
+      thumbnailURL: thumbnailUrl || undefined,
       category: category || undefined,
     });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-neutral-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-          <Link href="/feed" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
+      <header className="bg-neutral-800 border-b border-neutral-700">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
+          <Link href="/feed" className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-xl sm:text-2xl font-semibold dark:text-white">Upload Video</h1>
@@ -214,23 +203,23 @@ export default function UploadVideoPage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
-          <div className={`flex items-center gap-2 ${step === "upload" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${step === "upload" ? "bg-blue-600 text-white" : step === "details" || step === "done" ? "bg-green-500 text-white" : "bg-gray-200 dark:bg-gray-700"}`}>
+        <div className="flex items-center justify-center gap-4 mb-8">
+          <div className={`flex items-center gap-2 ${step === "upload" ? "text-blue-600" : "text-gray-400"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "upload" ? "bg-blue-600 text-white" : step === "details" || step === "done" ? "bg-green-500 text-white" : "bg-neutral-700 text-white"}`}>
               {step === "details" || step === "done" ? <CheckCircle className="h-5 w-5" /> : "1"}
             </div>
             <span className="font-medium text-sm sm:text-base">Upload</span>
           </div>
-          <div className="w-8 sm:w-16 h-0.5 bg-gray-200 dark:bg-gray-700" />
-          <div className={`flex items-center gap-2 ${step === "details" ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${step === "details" ? "bg-blue-600 text-white" : step === "done" ? "bg-green-500 text-white" : "bg-gray-200 dark:bg-gray-700"}`}>
+          <div className="w-16 h-0.5 bg-neutral-700" />
+          <div className={`flex items-center gap-2 ${step === "details" ? "text-blue-600" : "text-gray-400"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "details" ? "bg-blue-600 text-white" : step === "done" ? "bg-green-500 text-white" : "bg-neutral-700 text-white"}`}>
               {step === "done" ? <CheckCircle className="h-5 w-5" /> : "2"}
             </div>
             <span className="font-medium text-sm sm:text-base">Details</span>
           </div>
-          <div className="w-8 sm:w-16 h-0.5 bg-gray-200 dark:bg-gray-700" />
-          <div className={`flex items-center gap-2 ${step === "done" ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm sm:text-base ${step === "done" ? "bg-green-500 text-white" : "bg-gray-200 dark:bg-gray-700"}`}>
+          <div className="w-16 h-0.5 bg-neutral-700" />
+          <div className={`flex items-center gap-2 ${step === "done" ? "text-green-600" : "text-gray-400"}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "done" ? "bg-green-500 text-white" : "bg-neutral-700 text-white"}`}>
               {step === "done" ? <CheckCircle className="h-5 w-5" /> : "3"}
             </div>
             <span className="font-medium text-sm sm:text-base">Done</span>
@@ -251,39 +240,6 @@ export default function UploadVideoPage() {
                 <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   Upload a video file (max 512MB, recommended 3-5 minutes for demo)
                 </p>
-                
-                {/* Upload Button - Alternative */}
-                <div className="flex flex-col items-center gap-4">
-                  <UploadButton
-                    endpoint="videoUploader"
-                    onClientUploadComplete={(res) => {
-                      console.log("Upload complete:", res);
-                      if (res && res[0]) {
-                        toast.success("Video file uploaded!", {
-                          description: "Now add details for your video",
-                        });
-                        setVideoUrl(res[0].ufsUrl);
-                        setVideoName(res[0].name);
-                        setTitle(res[0].name.replace(/\.[^/.]+$/, ""));
-                        setStep("details");
-                      }
-                    }}
-                    onUploadError={(error: Error) => {
-                      console.error("Upload error:", error);
-                      toast.error("Upload failed", {
-                        description: error.message,
-                      });
-                    }}
-                    onUploadBegin={(name) => {
-                      console.log("Upload started:", name);
-                      toast.info("Uploading video...", {
-                        description: name,
-                      });
-                    }}
-                  />
-                  <p className="text-sm text-gray-400 dark:text-gray-500">or drag and drop below</p>
-                </div>
-
                 <UploadDropzone
                   endpoint="videoUploader"
                   onClientUploadComplete={(res) => {
@@ -309,9 +265,6 @@ export default function UploadVideoPage() {
                   }}
                   className="ut-label:text-lg ut-allowed-content:text-gray-500 dark:ut-allowed-content:text-gray-400 ut-uploading:cursor-not-allowed border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 hover:border-blue-500 dark:hover:border-blue-400 transition-colors dark:bg-gray-800"
                 />
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center">
-                  By uploading, you agree to NepTube&apos;s Terms of Service
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -325,11 +278,11 @@ export default function UploadVideoPage() {
               <div className="lg:col-span-2 space-y-6">
                 <Card className="dark:bg-gray-900 dark:border-gray-800">
                   <CardHeader>
-                    <CardTitle className="text-lg sm:text-xl dark:text-white">Video Details</CardTitle>
+                    <CardTitle className="text-white">Video Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="title" className="text-base dark:text-gray-300">Title *</Label>
+                      <Label htmlFor="title" className="text-white">Title *</Label>
                       <Input
                         id="title"
                         value={title}
@@ -337,13 +290,13 @@ export default function UploadVideoPage() {
                         placeholder="Enter video title"
                         required
                         maxLength={100}
-                        className="dark:bg-gray-800 dark:border-gray-700 dark:text-white text-base"
+                        className="bg-neutral-800 text-white border-gray-600 placeholder-gray-400"
                       />
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{title.length}/100</p>
+                      <p className="text-xs text-gray-400 mt-1">{title.length}/100</p>
                     </div>
 
                     <div>
-                      <Label htmlFor="description" className="text-base dark:text-gray-300">Description</Label>
+                      <Label htmlFor="description" className="text-white">Description</Label>
                       <Textarea
                         id="description"
                         value={description}
@@ -351,20 +304,20 @@ export default function UploadVideoPage() {
                         placeholder="Tell viewers about your video"
                         rows={5}
                         maxLength={5000}
-                        className="dark:bg-gray-800 dark:border-gray-700 dark:text-white text-base"
+                        className="bg-neutral-800 text-white border-gray-600 placeholder-gray-400"
                       />
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{description.length}/5000</p>
+                      <p className="text-xs text-gray-400 mt-1">{description.length}/5000</p>
                     </div>
 
                     <div>
-                      <Label htmlFor="category" className="text-base dark:text-gray-300">Category</Label>
+                      <Label htmlFor="category" className="text-white">Category</Label>
                       <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700 dark:text-white text-base">
-                          <SelectValue placeholder="Select a category" />
+                        <SelectTrigger className="text-white bg-neutral-800 border-gray-600 focus:ring-2 focus:ring-blue-500">
+                          <SelectValue placeholder="Select a category" className="text-white" />
                         </SelectTrigger>
-                        <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                        <SelectContent className="bg-neutral-800 text-white border-gray-600">
                           {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat} className="dark:text-white text-base">
+                            <SelectItem key={cat} value={cat} className="text-white bg-neutral-800 focus:bg-blue-600 focus:text-white data-[state=checked]:bg-blue-600 data-[state=checked]:text-white">
                               {cat}
                             </SelectItem>
                           ))}
@@ -374,10 +327,10 @@ export default function UploadVideoPage() {
                   </CardContent>
                 </Card>
 
-                {/* Thumbnail */}
-                <Card className="dark:bg-gray-900 dark:border-gray-800">
+                {/* Thumbnail - moved out of category section */}
+                <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl dark:text-white">
+                    <CardTitle className="flex items-center gap-2 text-white">
                       <ImageIcon className="h-5 w-5" />
                       Thumbnail
                     </CardTitle>
@@ -479,7 +432,7 @@ export default function UploadVideoPage() {
                             <span className="w-full border-t dark:border-gray-700" />
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white dark:bg-gray-900 px-2 text-gray-500">Or choose another option</span>
+                            <span className="bg-neutral-800 px-2 text-gray-300">Or upload</span>
                           </div>
                         </div>
 
@@ -563,40 +516,15 @@ export default function UploadVideoPage() {
                       <p className="font-medium text-sm truncate dark:text-white">
                         {title || "Untitled Video"}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{videoName}</p>
-                      
-                      {/* Thumbnail preview */}
-                      <div className="pt-2 border-t dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Thumbnail:</p>
-                        {thumbnailUrl ? (
-                          <Image
-                            src={thumbnailUrl}
-                            alt="Thumbnail preview"
-                            width={200}
-                            height={112}
-                            className="w-full rounded"
-                          />
-                        ) : extractedFrames[selectedFrameIndex] ? (
-                          <Image
-                            src={extractedFrames[selectedFrameIndex].dataUrl}
-                            alt="Thumbnail preview"
-                            width={200}
-                            height={112}
-                            className="w-full rounded"
-                          />
-                        ) : (
-                          <div className="w-full aspect-video bg-gray-200 dark:bg-gray-800 rounded flex items-center justify-center">
-                            <span className="text-xs text-gray-400">No thumbnail</span>
-                          </div>
-                        )}
-                      </div>
+                      <p className="text-xs text-gray-500">{videoName}</p>
+                      {/* No qualities badges needed for single file upload */}
                     </div>
                   </CardContent>
                 </Card>
 
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-lg py-4 rounded-lg shadow-lg border-2 border-blue-700 transition-all"
                   size="lg"
                   disabled={isSubmitting || !title || !videoUrl}
                 >
@@ -612,6 +540,7 @@ export default function UploadVideoPage() {
                     </>
                   )}
                 </Button>
+                                 className="ut-label:text-sm border-2 border-dashed border-blue-700 rounded-lg p-4 hover:border-blue-500 transition-colors bg-neutral-800"
               </div>
             </div>
           </form>

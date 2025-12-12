@@ -51,6 +51,7 @@ export const videos = pgTable("videos", {
   category: text("category"),
   thumbnailURL: text("thumbnail_url"),
   videoURL: text("video_url"),
+  qualities: text("qualities", { mode: "json" }),
   visibility: videoVisibilityEnum("visibility").default("private").notNull(),
   status: videoStatusEnum("status").default("draft").notNull(),
   rejectionReason: text("rejection_reason"),
@@ -58,6 +59,7 @@ export const videos = pgTable("videos", {
   viewCount: integer("view_count").default(0).notNull(),
   likeCount: integer("like_count").default(0).notNull(),
   dislikeCount: integer("dislike_count").default(0).notNull(),
+  approved: boolean("approved").default(false).notNull(),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),

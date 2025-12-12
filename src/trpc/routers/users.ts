@@ -43,6 +43,7 @@ export const usersRouter = createTRPCRouter({
         imageURL: z.string().url().optional(),
         description: z.string().max(1000).optional(),
         bannerURL: z.string().url().optional(),
+        imageURL: z.string().url().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -1,10 +1,13 @@
+
 "use client";
 
-import { Suspense } from "react";
+import React, { useState, useEffect } from "react";
+
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Upload, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +34,13 @@ function VideoCard({ video }: { video: {
     imageURL: string;
   };
 }}) {
+  const [createdAgo, setCreatedAgo] = useState<string>("");
+  useEffect(() => {
+    if (video?.createdAt) {
+      setCreatedAgo(formatDistanceToNow(new Date(video.createdAt), { addSuffix: true }));
+    }
+  }, [video?.createdAt]);
+
   return (
     <Link href={`/feed/${video.id}`} className="group cursor-pointer">
       <div className="flex flex-col">
@@ -79,20 +89,10 @@ function VideoCard({ video }: { video: {
             <h3 className="font-semibold text-sm leading-tight line-clamp-2 text-gray-900 dark:text-white mb-1">
               {video.title}
             </h3>
-            
-            {/* Channel Name */}
-            <div className="flex items-center">
-              <p className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
-                {video.user.name}
-              </p>
-            </div>
-            
-            {/* Views and Date */}
-            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-              <span>{formatViewCount(video.viewCount)}</span>
-              <span>•</span>
-              <span>{formatDistanceToNow(new Date(video.createdAt), { addSuffix: true })}</span>
-            </div>
+            <p className="text-xs text-gray-600 mt-1">{video.user.name}</p>
+            <p className="text-xs text-gray-500">
+              {formatViewCount(video.viewCount)} • <span suppressHydrationWarning>{createdAgo}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -125,10 +125,17 @@ function VideoCardSkeleton() {
 function FeedPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q") || "";
+  const { user } = useUser();
+
+  // Get current user's database ID to exclude their videos from recommendations
+  const { data: currentUser } = trpc.users.me.useQuery(undefined, {
+    enabled: !!user,
+  });
 
   const { data, isLoading, error } = trpc.videos.getFeed.useQuery({
     limit: 20,
     search: searchQuery || undefined,
+    excludeUserId: currentUser?.id, // Don't show user's own videos in feed
   });
 
   if (error) {
@@ -143,13 +150,20 @@ function FeedPage() {
   }
 
   return (
-    <div className="py-6 dark:bg-gray-950 bg-white min-h-screen w-full">
-      <div className="max-w-[2000px] mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-lg sm:text-xl font-semibold dark:text-white">
-            {searchQuery ? `Search results for "${searchQuery}"` : ""}
-          </h1>
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">
+          {searchQuery ? `Search results for "${searchQuery}"` : "Recommended"}
+        </h1>
+      </div>
+
+      {/* Video Grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <VideoCardSkeleton key={i} />
+          ))}
         </div>
 
         {/* Video Grid */}
@@ -176,14 +190,7 @@ function FeedPage() {
               ? `No videos match "${searchQuery}". Try a different search.`
               : "Be the first to upload a video!"}
           </p>
-          {!searchQuery && (
-            <Link href="/studio/upload">
-              <Button>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Video
-              </Button>
-            </Link>
-          )}
+          {/* Only show upload button in sidebar/profile, not here */}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-10">

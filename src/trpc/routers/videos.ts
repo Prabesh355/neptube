@@ -1,20 +1,26 @@
 import { z } from "zod";
-import { eq, desc, and, sql, ilike, or } from "drizzle-orm";
+import { eq, desc, and, sql, ilike, or, ne } from "drizzle-orm";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "../init";
 import { videos, users, videoLikes, watchHistory } from "@/db/schema";
 
 export const videosRouter = createTRPCRouter({
-  // Get all public videos (feed) with optional search
+  // Get all public videos (feed) with optional search and recommendation algorithm
   getFeed: baseProcedure
     .input(
       z.object({
         limit: z.number().min(1).max(50).default(20),
         cursor: z.string().uuid().optional(),
         search: z.string().optional(),
+        excludeUserId: z.string().uuid().optional(), // Exclude current user's videos
       })
     )
     .query(async ({ ctx, input }) => {
-      const conditions = [eq(videos.visibility, "public")];
+      const conditions = [eq(videos.visibility, "public"), eq(videos.approved, true)];
+      
+      // Exclude current user's own videos from recommendations (like YouTube)
+      if (input.excludeUserId) {
+        conditions.push(ne(videos.userId, input.excludeUserId));
+      }
       
       // Add search conditions if search query provided
       if (input.search && input.search.trim()) {
@@ -27,6 +33,24 @@ export const videosRouter = createTRPCRouter({
           )!
         );
       }
+
+      // Recommendation Algorithm Score:
+      // Score = (viewCount * 1) + (likeCount * 5) - (dislikeCount * 3) + recencyBoost
+      // Recency boost: Videos less than 7 days old get +100, less than 30 days get +50
+      const recencyBoostSql = sql`
+        CASE 
+          WHEN ${videos.createdAt} > NOW() - INTERVAL '7 days' THEN 100
+          WHEN ${videos.createdAt} > NOW() - INTERVAL '30 days' THEN 50
+          ELSE 0
+        END
+      `;
+      
+      const recommendationScore = sql`
+        (COALESCE(${videos.viewCount}, 0) * 1) + 
+        (COALESCE(${videos.likeCount}, 0) * 5) - 
+        (COALESCE(${videos.dislikeCount}, 0) * 3) + 
+        ${recencyBoostSql}
+      `.as("recommendation_score");
 
       const items = await ctx.db
         .select({
@@ -42,11 +66,12 @@ export const videosRouter = createTRPCRouter({
             name: users.name,
             imageURL: users.imageURL,
           },
+          recommendationScore: recommendationScore,
         })
         .from(videos)
         .innerJoin(users, eq(videos.userId, users.id))
         .where(and(...conditions))
-        .orderBy(desc(videos.createdAt))
+        .orderBy(sql`${recommendationScore} DESC`, desc(videos.createdAt))
         .limit(input.limit + 1);
 
       let nextCursor: string | undefined = undefined;
@@ -141,6 +166,7 @@ export const videosRouter = createTRPCRouter({
         category: z.string().max(50).optional(),
         thumbnailURL: z.string().url().optional(),
         videoURL: z.string().url().optional(),
+        qualities: z.string().optional(),
         visibility: z.enum(["public", "private", "unlisted"]).default("public"),
         duration: z.number().int().min(0).optional(),
       })
@@ -151,7 +177,8 @@ export const videosRouter = createTRPCRouter({
         .values({
           ...input,
           userId: ctx.user.id,
-          status: "published", // Auto-publish for demo
+          status: "pending", // Require admin approval
+          approved: false,
         })
         .returning();
 

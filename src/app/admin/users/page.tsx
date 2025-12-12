@@ -95,68 +95,68 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-white">Users</h1>
+        <p className="text-gray-300 mt-1">
           Manage user accounts and permissions
         </p>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex flex-wrap gap-4 bg-neutral-800 p-4 rounded-lg shadow-sm">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-white bg-neutral-900 border-neutral-700 placeholder:text-gray-400"
           />
         </div>
         <Select value={roleFilter} onValueChange={(v: typeof roleFilter) => setRoleFilter(v)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Role" />
+          <SelectTrigger className="w-[150px] bg-neutral-900 text-white border-neutral-700">
+            <SelectValue placeholder="Role" className="text-white" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="user">User</SelectItem>
-            <SelectItem value="moderator">Moderator</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
+          <SelectContent className="bg-neutral-900 text-white">
+            <SelectItem value="all" className="text-white">All Roles</SelectItem>
+            <SelectItem value="user" className="text-white">User</SelectItem>
+            <SelectItem value="moderator" className="text-white">Moderator</SelectItem>
+            <SelectItem value="admin" className="text-white">Admin</SelectItem>
           </SelectContent>
         </Select>
         <Select value={bannedFilter} onValueChange={(v: typeof bannedFilter) => setBannedFilter(v)}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+          <SelectTrigger className="w-[150px] bg-neutral-900 text-white border-neutral-700">
+            <SelectValue placeholder="Status" className="text-white" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="banned">Banned</SelectItem>
+          <SelectContent className="bg-neutral-900 text-white">
+            <SelectItem value="all" className="text-white">All Status</SelectItem>
+            <SelectItem value="active" className="text-white">Active</SelectItem>
+            <SelectItem value="banned" className="text-white">Banned</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-neutral-800 rounded-lg shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-white">User</TableHead>
+              <TableHead className="text-white">Role</TableHead>
+              <TableHead className="text-white">Status</TableHead>
+              <TableHead className="text-white">Joined</TableHead>
+              <TableHead className="text-right text-white">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={5} className="text-center py-8 text-white">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : data?.users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={5} className="text-center py-8 text-gray-400">
                   No users found
                 </TableCell>
               </TableRow>
@@ -167,11 +167,11 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-3">
                       <Avatar>
                         <AvatarImage src={user.imageURL} />
-                        <AvatarFallback>{user.name[0]}</AvatarFallback>
+                        <AvatarFallback className="bg-neutral-700 text-white">{user.name[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.clerkId}</p>
+                        <p className="font-medium text-white">{user.name}</p>
+                        <p className="text-sm text-gray-400">{user.clerkId}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -182,29 +182,27 @@ export default function AdminUsersPage() {
                         updateRole.mutate({ userId: user.id, role })
                       }
                     >
-                      <SelectTrigger className="w-[120px]">
-                        <Badge className={getRoleBadgeColor(user.role)}>
+                      <SelectTrigger className="w-[120px] bg-neutral-900 text-white border-neutral-700">
+                        <Badge className={getRoleBadgeColor(user.role) + ' border border-neutral-700'}>
                           {user.role}
                         </Badge>
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="moderator">Moderator</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                      <SelectContent className="bg-neutral-900 text-white">
+                        <SelectItem value="user" className="text-white">User</SelectItem>
+                        <SelectItem value="moderator" className="text-white">Moderator</SelectItem>
+                        <SelectItem value="admin" className="text-white">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell>
                     {user.isBanned ? (
-                      <Badge variant="destructive">Banned</Badge>
+                      <Badge variant="destructive" className="text-white bg-red-700 border border-red-500">Banned</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        Active
-                      </Badge>
+                      <Badge variant="outline" className="text-green-400 border-green-500 bg-neutral-900">Active</Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(user.createdAt), "MMM d, yyyy")}
+                    <span className="text-gray-200">{format(new Date(user.createdAt), "MMM d, yyyy")}</span>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -212,6 +210,7 @@ export default function AdminUsersPage() {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="text-white border-neutral-700 hover:bg-green-700 hover:text-white"
                           onClick={() => unbanUser.mutate({ userId: user.id })}
                         >
                           <UserCheck className="h-4 w-4 mr-1" />
@@ -221,7 +220,7 @@ export default function AdminUsersPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-400 border-neutral-700 hover:bg-red-700 hover:text-white"
                           onClick={() => handleBan(user.id)}
                         >
                           <Ban className="h-4 w-4 mr-1" />
@@ -231,6 +230,7 @@ export default function AdminUsersPage() {
                       <Button
                         size="sm"
                         variant="destructive"
+                        className="text-white bg-red-700 hover:bg-red-800"
                         onClick={() => {
                           if (confirm("Are you sure you want to delete this user?")) {
                             deleteUser.mutate({ userId: user.id });
@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
         </Table>
 
         {data && (
-          <div className="px-4 py-3 border-t text-sm text-gray-500">
+          <div className="px-4 py-3 border-t border-neutral-700 text-sm text-gray-300">
             Showing {data.users.length} of {data.total} users
           </div>
         )}
@@ -256,10 +256,10 @@ export default function AdminUsersPage() {
 
       {/* Ban Dialog */}
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-neutral-900 text-white">
           <DialogHeader>
-            <DialogTitle>Ban User</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-white">Ban User</DialogTitle>
+            <DialogDescription className="text-gray-300">
               Please provide a reason for banning this user. This will be recorded.
             </DialogDescription>
           </DialogHeader>
@@ -268,14 +268,16 @@ export default function AdminUsersPage() {
               placeholder="Enter ban reason..."
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
+              className="text-white bg-neutral-800 border-neutral-700 placeholder:text-gray-400"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
+            <Button variant="outline" className="text-white border-neutral-700 hover:bg-neutral-700" onClick={() => setBanDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="text-white bg-red-700 hover:bg-red-800"
               onClick={confirmBan}
               disabled={!banReason || banUser.isPending}
             >

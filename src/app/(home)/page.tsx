@@ -11,11 +11,9 @@ export default function Home() {
   }, [router]);
   
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center">
+        <h1 className="text-5xl text-gray-100">Video incoming!!!</h1>
+        {data && <p className="text-gray-300">{data.greeting}</p>}
       </div>
-    </div>
   );
 }
