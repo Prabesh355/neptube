@@ -78,20 +78,20 @@ export default function StudioPage() {
   const totalLikes = videos?.reduce((sum, v) => sum + v.likeCount, 0) || 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/feed" className="text-gray-500 hover:text-gray-700">
+              <Link href="/feed" className="text-muted-foreground hover:text-foreground transition-colors">
                 ← Back
               </Link>
-              <h1 className="text-2xl font-bold">Creator Studio</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Creator Studio</h1>
             </div>
             <Link href="/studio/upload">
-              <Button>
-                <Upload className="h-4 w-4 mr-2" />
+              <Button className="gap-2">
+                <Upload className="h-4 w-4" />
                 Upload Video
               </Button>
             </Link>
@@ -104,25 +104,25 @@ export default function StudioPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Videos
               </CardTitle>
-              <Video className="h-4 w-4 text-gray-400" />
+              <Video className="h-4 w-4 text-primary/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{videos?.length || 0}</div>
+              <div className="text-2xl font-semibold">{videos?.length || 0}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Views
               </CardTitle>
-              <Eye className="h-4 w-4 text-gray-400" />
+              <Eye className="h-4 w-4 text-primary/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-semibold">
                 {totalViews.toLocaleString()}
               </div>
             </CardContent>
@@ -130,13 +130,13 @@ export default function StudioPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Likes
               </CardTitle>
-              <ThumbsUp className="h-4 w-4 text-gray-400" />
+              <ThumbsUp className="h-4 w-4 text-primary/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-semibold">
                 {totalLikes.toLocaleString()}
               </div>
             </CardContent>
@@ -155,16 +155,16 @@ export default function StudioPage() {
               </div>
             ) : !videos || videos.length === 0 ? (
               <div className="text-center py-12">
-                <Video className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <Video className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-base font-medium mb-1">
                   No videos yet
                 </h3>
-                <p className="text-gray-500 mb-4">
+                <p className="text-muted-foreground text-sm mb-4">
                   Upload your first video to get started
                 </p>
                 <Link href="/studio/upload">
-                  <Button>
-                    <Upload className="h-4 w-4 mr-2" />
+                  <Button className="gap-2">
+                    <Upload className="h-4 w-4" />
                     Upload Video
                   </Button>
                 </Link>
@@ -205,11 +205,10 @@ export default function StudioPage() {
                           <div className="min-w-0">
                             <Link
                               href={`/feed/${video.id}`}
-                              className="font-medium hover:text-blue-600 line-clamp-2"
-                            >
+                              className="font-medium hover:text-primary line-clamp-2 transition-colors">
                               {video.title}
                             </Link>
-                            <p className="text-sm text-gray-500 line-clamp-1">
+                            <p className="text-sm text-muted-foreground line-clamp-1">
                               {video.description || "No description"}
                             </p>
                           </div>
@@ -226,7 +225,7 @@ export default function StudioPage() {
                       <TableCell>{getStatusBadge(video.status)}</TableCell>
                       <TableCell>{video.viewCount.toLocaleString()}</TableCell>
                       <TableCell>{video.likeCount.toLocaleString()}</TableCell>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-muted-foreground">
                         {format(new Date(video.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>

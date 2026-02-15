@@ -1,6 +1,7 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   const wh = new Webhook(SIGNING_SECRET);
 
   // Get headers
-  const headerPayload = headers();
+  const headerPayload = await headers();
   const svixId = headerPayload.get("svix-id");
   const svixTimestamp = headerPayload.get("svix-timestamp");
   const svixSignature = headerPayload.get("svix-signature");
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
       await db.insert(users).values({
         clerkId: data.id,
         name: `${data.first_name} ${data.last_name}`,
-        imageUrl: data.image_url || null,
+        imageURL: data.image_url || "",
       });
 
       console.log(`User created: ${data.id}`);
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   if (eventType === "user.deleted") {
     try {
       const data = evt.data as { id: string };
-      await db.delete(users).where(users.clerkId.eq(data.id));
+      await db.delete(users).where(eq(users.clerkId, data.id));
       console.log(`User deleted: ${data.id}`);
     } catch (err) {
       console.error("Error deleting user:", err);

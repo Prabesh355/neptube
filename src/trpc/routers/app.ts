@@ -5,6 +5,10 @@ import { videosRouter } from "./videos";
 import { commentsRouter } from "./comments";
 import { subscriptionsRouter } from "./subscriptions";
 import { adminRouter } from "./admin";
+import { historyRouter } from "./history";
+import { playlistsRouter } from "./playlists";
+import { notificationsRouter } from "./notifications";
+import { reportsRouter } from "./reports";
 
 export const appRouter = createTRPCRouter({
   // Keep hello for testing
@@ -26,6 +30,10 @@ export const appRouter = createTRPCRouter({
   comments: commentsRouter,
   subscriptions: subscriptionsRouter,
   admin: adminRouter,
+  history: historyRouter,
+  playlists: playlistsRouter,
+  notifications: notificationsRouter,
+  reports: reportsRouter,
 });
 
 // export type definition of API

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "../init";
-import { comments, users } from "@/db/schema";
+import { comments, users, videos, notifications } from "@/db/schema";
+import { analyzeSentiment, analyzeToxicity } from "@/lib/ai";
 
 export const commentsRouter = createTRPCRouter({
   // Get comments for a video
@@ -20,6 +21,11 @@ export const commentsRouter = createTRPCRouter({
           likeCount: comments.likeCount,
           createdAt: comments.createdAt,
           parentId: comments.parentId,
+          // ML fields
+          sentiment: comments.sentiment,
+          sentimentScore: comments.sentimentScore,
+          isToxic: comments.isToxic,
+          isHidden: comments.isHidden,
           user: {
             id: users.id,
             name: users.name,
@@ -29,7 +35,11 @@ export const commentsRouter = createTRPCRouter({
         .from(comments)
         .innerJoin(users, eq(comments.userId, users.id))
         .where(
-          and(eq(comments.videoId, input.videoId), isNull(comments.parentId))
+          and(
+            eq(comments.videoId, input.videoId),
+            isNull(comments.parentId),
+            eq(comments.isHidden, false)
+          )
         )
         .orderBy(desc(comments.createdAt))
         .limit(input.limit);
@@ -77,6 +87,12 @@ export const commentsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Run sentiment and toxicity analysis in parallel
+      const [sentimentResult, toxicityResult] = await Promise.all([
+        analyzeSentiment(input.content),
+        analyzeToxicity(input.content),
+      ]);
+
       const newComment = await ctx.db
         .insert(comments)
         .values({
@@ -84,8 +100,67 @@ export const commentsRouter = createTRPCRouter({
           videoId: input.videoId,
           userId: ctx.user.id,
           parentId: input.parentId,
+          // ML fields
+          sentiment: sentimentResult.sentiment,
+          sentimentScore: sentimentResult.score,
+          isToxic: toxicityResult.isToxic,
+          toxicityScore: toxicityResult.score,
+          isHidden: toxicityResult.isToxic, // Auto-hide toxic comments
         })
         .returning();
+
+      // Increment comment count on video
+      await ctx.db
+        .update(videos)
+        .set({ commentCount: sql`${videos.commentCount} + 1` })
+        .where(eq(videos.id, input.videoId));
+
+      // Send notification to video owner (fire-and-forget)
+      (async () => {
+        try {
+          const video = await ctx.db
+            .select({ userId: videos.userId, title: videos.title })
+            .from(videos)
+            .where(eq(videos.id, input.videoId))
+            .limit(1);
+
+          if (video[0] && video[0].userId !== ctx.user.id) {
+            if (input.parentId) {
+              // Reply notification - notify the parent comment author
+              const parentComment = await ctx.db
+                .select({ userId: comments.userId })
+                .from(comments)
+                .where(eq(comments.id, input.parentId))
+                .limit(1);
+
+              if (parentComment[0] && parentComment[0].userId !== ctx.user.id) {
+                await ctx.db.insert(notifications).values({
+                  userId: parentComment[0].userId,
+                  type: "reply",
+                  title: "New reply",
+                  message: `${ctx.user.name} replied to your comment`,
+                  link: `/feed/${input.videoId}`,
+                  fromUserId: ctx.user.id,
+                  videoId: input.videoId,
+                });
+              }
+            } else {
+              // Comment notification to video owner
+              await ctx.db.insert(notifications).values({
+                userId: video[0].userId,
+                type: "comment",
+                title: "New comment",
+                message: `${ctx.user.name} commented on "${video[0].title}"`,
+                link: `/feed/${input.videoId}`,
+                fromUserId: ctx.user.id,
+                videoId: input.videoId,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to send comment notification:", err);
+        }
+      })();
 
       return newComment[0];
     }),

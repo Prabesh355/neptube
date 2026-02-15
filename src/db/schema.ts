@@ -7,6 +7,8 @@ import {
   integer,
   boolean,
   pgEnum,
+  real,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -22,6 +24,30 @@ export const videoStatusEnum = pgEnum("video_status", [
   "pending",
   "published",
   "rejected",
+]);
+export const sentimentEnum = pgEnum("sentiment", [
+  "positive",
+  "negative",
+  "neutral",
+]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "new_video",
+  "comment",
+  "reply",
+  "like",
+  "subscription",
+  "report_resolved",
+]);
+export const reportStatusEnum = pgEnum("report_status", [
+  "pending",
+  "reviewed",
+  "resolved",
+  "dismissed",
+]);
+export const reportTargetEnum = pgEnum("report_target", [
+  "video",
+  "comment",
+  "user",
 ]);
 
 // Users table
@@ -58,6 +84,14 @@ export const videos = pgTable("videos", {
   viewCount: integer("view_count").default(0).notNull(),
   likeCount: integer("like_count").default(0).notNull(),
   dislikeCount: integer("dislike_count").default(0).notNull(),
+  commentCount: integer("comment_count").default(0).notNull(),
+  // ML fields
+  tags: jsonb("tags").$type<string[]>(),
+  aiSummary: text("ai_summary"),
+  transcript: text("transcript"),
+  chapters: jsonb("chapters").$type<{ time: number; title: string }[]>(),
+  nsfwScore: real("nsfw_score"),
+  isNsfw: boolean("is_nsfw").default(false),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -77,6 +111,12 @@ export const comments = pgTable("comments", {
     .references(() => videos.id, { onDelete: "cascade" }),
   parentId: uuid("parent_id"),
   likeCount: integer("like_count").default(0).notNull(),
+  // ML fields
+  sentiment: sentimentEnum("sentiment"),
+  sentimentScore: real("sentiment_score"),
+  isToxic: boolean("is_toxic").default(false),
+  toxicityScore: real("toxicity_score"),
+  isHidden: boolean("is_hidden").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -106,13 +146,96 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Relations
+// Watch History table
+export const watchHistory = pgTable("watch_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  videoId: uuid("video_id")
+    .notNull()
+    .references(() => videos.id, { onDelete: "cascade" }),
+  watchedAt: timestamp("watched_at").defaultNow().notNull(),
+  watchDuration: integer("watch_duration").default(0), // seconds watched
+});
+
+// Playlists table
+export const playlists = pgTable("playlists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  description: text("description"),
+  visibility: videoVisibilityEnum("visibility").default("private").notNull(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Playlist Videos (join table)
+export const playlistVideos = pgTable("playlist_videos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  playlistId: uuid("playlist_id")
+    .notNull()
+    .references(() => playlists.id, { onDelete: "cascade" }),
+  videoId: uuid("video_id")
+    .notNull()
+    .references(() => videos.id, { onDelete: "cascade" }),
+  position: integer("position").default(0).notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").default(false).notNull(),
+  fromUserId: uuid("from_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  videoId: uuid("video_id").references(() => videos.id, {
+    onDelete: "cascade",
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Reports table
+export const reports = pgTable("reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterId: uuid("reporter_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  targetType: reportTargetEnum("target_type").notNull(),
+  targetId: uuid("target_id").notNull(),
+  reason: text("reason").notNull(),
+  description: text("description"),
+  status: reportStatusEnum("status").default("pending").notNull(),
+  resolvedBy: uuid("resolved_by").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedNote: text("resolved_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Relations ───────────────────────────────────────────────────────────────
+
 export const usersRelations = relations(users, ({ many }) => ({
   videos: many(videos),
   comments: many(comments),
   videoLikes: many(videoLikes),
   subscriptions: many(subscriptions, { relationName: "subscriber" }),
   subscribers: many(subscriptions, { relationName: "channel" }),
+  watchHistory: many(watchHistory),
+  playlists: many(playlists),
+  notifications: many(notifications),
+  reports: many(reports),
 }));
 
 export const videosRelations = relations(videos, ({ one, many }) => ({
@@ -122,6 +245,8 @@ export const videosRelations = relations(videos, ({ one, many }) => ({
   }),
   comments: many(comments),
   likes: many(videoLikes),
+  watchHistory: many(watchHistory),
+  playlistVideos: many(playlistVideos),
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
@@ -162,5 +287,61 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     fields: [subscriptions.channelId],
     references: [users.id],
     relationName: "channel",
+  }),
+}));
+
+export const watchHistoryRelations = relations(watchHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [watchHistory.userId],
+    references: [users.id],
+  }),
+  video: one(videos, {
+    fields: [watchHistory.videoId],
+    references: [videos.id],
+  }),
+}));
+
+export const playlistsRelations = relations(playlists, ({ one, many }) => ({
+  user: one(users, {
+    fields: [playlists.userId],
+    references: [users.id],
+  }),
+  videos: many(playlistVideos),
+}));
+
+export const playlistVideosRelations = relations(playlistVideos, ({ one }) => ({
+  playlist: one(playlists, {
+    fields: [playlistVideos.playlistId],
+    references: [playlists.id],
+  }),
+  video: one(videos, {
+    fields: [playlistVideos.videoId],
+    references: [videos.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  fromUser: one(users, {
+    fields: [notifications.fromUserId],
+    references: [users.id],
+  }),
+  video: one(videos, {
+    fields: [notifications.videoId],
+    references: [videos.id],
+  }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  reporter: one(users, {
+    fields: [reports.reporterId],
+    references: [users.id],
+  }),
+  resolver: one(users, {
+    fields: [reports.resolvedBy],
+    references: [users.id],
   }),
 }));

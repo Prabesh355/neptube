@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, and, sql } from "drizzle-orm";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "../init";
-import { subscriptions, users } from "@/db/schema";
+import { subscriptions, users, notifications } from "@/db/schema";
 
 export const subscriptionsRouter = createTRPCRouter({
   // Check if subscribed to a channel
@@ -86,6 +86,16 @@ export const subscriptionsRouter = createTRPCRouter({
           subscriberId: ctx.user.id,
           channelId: input.channelId,
         });
+
+        // Send notification to channel owner
+        await ctx.db.insert(notifications).values({
+          userId: input.channelId,
+          type: "subscription",
+          title: "New subscriber",
+          message: `${ctx.user.name} subscribed to your channel`,
+          link: `/channel/${ctx.user.id}`,
+          fromUserId: ctx.user.id,
+        }).catch(() => {});
 
         return { subscribed: true };
       }

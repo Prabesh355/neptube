@@ -25,7 +25,13 @@ import {
   ImageIcon,
   Sparkles,
   Save,
+  Tag,
+  Brain,
+  FileText,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const categories = [
   "Entertainment",
@@ -61,6 +67,18 @@ export default function EditVideoPage() {
     onSuccess: () => {
       utils.videos.getMyVideos.invalidate();
       router.push("/studio");
+    },
+  });
+
+  const reAnalyze = trpc.videos.reAnalyze.useMutation({
+    onSuccess: () => {
+      utils.videos.getById.invalidate({ id: videoId });
+    },
+  });
+
+  const transcribe = trpc.videos.transcribe.useMutation({
+    onSuccess: () => {
+      utils.videos.getById.invalidate({ id: videoId });
     },
   });
 
@@ -335,6 +353,117 @@ export default function EditVideoPage() {
                       <p className="text-gray-500">No video</p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* AI Analysis Card */}
+              <Card className="border-primary/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-primary">
+                      <Brain className="h-5 w-5" />
+                      AI Analysis
+                    </CardTitle>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => reAnalyze.mutate({ id: videoId })}
+                      disabled={reAnalyze.isPending}
+                      className="gap-1.5"
+                    >
+                      {reAnalyze.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      Re-analyze
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* NSFW Status */}
+                  {video.isNsfw && (
+                    <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                      <AlertTriangle className="h-4 w-4" />
+                      NSFW detected ({Math.round((video.nsfwScore ?? 0) * 100)}% confidence)
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                      <Tag className="h-3 w-3" /> Auto-Generated Tags
+                    </p>
+                    {video.tags && video.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {video.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {reAnalyze.isPending ? "Generating..." : "No tags yet — click Re-analyze"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* AI Summary */}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" /> AI Summary
+                    </p>
+                    {video.aiSummary ? (
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {video.aiSummary}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {reAnalyze.isPending ? "Generating..." : "No summary yet — click Re-analyze"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <FileText className="h-3 w-3" /> Transcript
+                      </p>
+                      {!video.transcript && video.videoURL && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => transcribe.mutate({ id: videoId })}
+                          disabled={transcribe.isPending}
+                          className="h-7 text-xs gap-1"
+                        >
+                          {transcribe.isPending ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Transcribing...
+                            </>
+                          ) : (
+                            "Generate Transcript"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    {video.transcript ? (
+                      <div className="max-h-32 overflow-y-auto p-2 bg-muted/50 rounded-lg">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                          {video.transcript}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {transcribe.isPending ? "Transcribing (this may take a few minutes)..." : "No transcript available"}
+                      </p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>

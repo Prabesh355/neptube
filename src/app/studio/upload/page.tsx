@@ -110,39 +110,39 @@ export default function UploadVideoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b">
+      <header className="bg-background border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/feed" className="text-gray-600 hover:text-gray-900">
+          <Link href="/feed" className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-xl font-semibold">Upload Video</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Upload Video</h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          <div className={`flex items-center gap-2 ${step === "upload" ? "text-blue-600" : "text-gray-400"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "upload" ? "bg-blue-600 text-white" : step === "details" || step === "done" ? "bg-green-500 text-white" : "bg-gray-200"}`}>
-              {step === "details" || step === "done" ? <CheckCircle className="h-5 w-5" /> : "1"}
+          <div className={`flex items-center gap-2 ${step === "upload" ? "text-primary" : "text-muted-foreground"}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium ${step === "upload" ? "bg-primary text-white" : step === "details" || step === "done" ? "bg-green-500 text-white" : "bg-muted"}`}>
+              {step === "details" || step === "done" ? <CheckCircle className="h-4 w-4" /> : "1"}
             </div>
-            <span className="font-medium">Upload</span>
+            <span className="text-sm font-medium">Upload</span>
           </div>
-          <div className="w-16 h-0.5 bg-gray-200" />
-          <div className={`flex items-center gap-2 ${step === "details" ? "text-blue-600" : "text-gray-400"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "details" ? "bg-blue-600 text-white" : step === "done" ? "bg-green-500 text-white" : "bg-gray-200"}`}>
-              {step === "done" ? <CheckCircle className="h-5 w-5" /> : "2"}
+          <div className="w-12 h-px bg-border" />
+          <div className={`flex items-center gap-2 ${step === "details" ? "text-primary" : "text-muted-foreground"}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium ${step === "details" ? "bg-primary text-white" : step === "done" ? "bg-green-500 text-white" : "bg-muted"}`}>
+              {step === "done" ? <CheckCircle className="h-4 w-4" /> : "2"}
             </div>
-            <span className="font-medium">Details</span>
+            <span className="text-sm font-medium">Details</span>
           </div>
-          <div className="w-16 h-0.5 bg-gray-200" />
-          <div className={`flex items-center gap-2 ${step === "done" ? "text-green-600" : "text-gray-400"}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step === "done" ? "bg-green-500 text-white" : "bg-gray-200"}`}>
-              {step === "done" ? <CheckCircle className="h-5 w-5" /> : "3"}
+          <div className="w-12 h-px bg-border" />
+          <div className={`flex items-center gap-2 ${step === "done" ? "text-green-600" : "text-muted-foreground"}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium ${step === "done" ? "bg-green-500 text-white" : "bg-muted"}`}>
+              {step === "done" ? <CheckCircle className="h-4 w-4" /> : "3"}
             </div>
-            <span className="font-medium">Done</span>
+            <span className="text-sm font-medium">Done</span>
           </div>
         </div>
 
@@ -157,7 +157,7 @@ export default function UploadVideoPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Upload a video file (max 512MB, recommended 3-5 minutes for demo)
                 </p>
                 
@@ -182,7 +182,7 @@ export default function UploadVideoPage() {
                       console.log("Upload started:", name);
                     }}
                   />
-                  <p className="text-sm text-gray-400">or drag and drop below</p>
+                  <p className="text-sm text-muted-foreground">or drag and drop below</p>
                 </div>
 
                 <UploadDropzone
@@ -203,9 +203,9 @@ export default function UploadVideoPage() {
                   onUploadBegin={(name) => {
                     console.log("Upload started:", name);
                   }}
-                  className="ut-label:text-lg ut-allowed-content:text-gray-500 ut-uploading:cursor-not-allowed border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-500 transition-colors"
+                  className="ut-label:text-lg ut-allowed-content:text-muted-foreground ut-uploading:cursor-not-allowed border-2 border-dashed border-border rounded-xl p-8 hover:border-primary/50 transition-colors"
                 />
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   By uploading, you agree to NepTube&apos;s Terms of Service
                 </p>
               </div>
@@ -277,7 +277,7 @@ export default function UploadVideoPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <p className="text-sm text-muted-foreground mb-4">
                       Upload a custom thumbnail or generate one with AI
                     </p>
                     {thumbnailUrl ? (
@@ -328,10 +328,10 @@ export default function UploadVideoPage() {
                         
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
+                            <span className="w-full border-t border-border" />
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-white px-2 text-gray-500">Or upload</span>
+                            <span className="bg-card px-2 text-muted-foreground">Or upload</span>
                           </div>
                         </div>
 
@@ -345,7 +345,7 @@ export default function UploadVideoPage() {
                           onUploadError={(error: Error) => {
                             alert(`Thumbnail upload failed: ${error.message}`);
                           }}
-                          className="ut-label:text-sm border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-blue-500 transition-colors"
+                          className="ut-label:text-sm border-2 border-dashed border-border rounded-xl p-4 hover:border-primary/50 transition-colors"
                         />
                       </div>
                     )}
@@ -369,7 +369,7 @@ export default function UploadVideoPage() {
                       <p className="font-medium text-sm truncate">
                         {title || "Untitled Video"}
                       </p>
-                      <p className="text-xs text-gray-500">{videoName}</p>
+                      <p className="text-xs text-muted-foreground">{videoName}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -402,11 +402,11 @@ export default function UploadVideoPage() {
           <Card className="text-center py-12">
             <CardContent>
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Video Published!</h2>
-              <p className="text-gray-600 mb-4">
+              <h2 className="text-xl font-semibold mb-2">Video Published!</h2>
+              <p className="text-muted-foreground mb-4">
                 Your video has been uploaded successfully and is now live.
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Redirecting to your video...
               </p>
             </CardContent>

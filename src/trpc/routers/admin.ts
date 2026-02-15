@@ -32,6 +32,21 @@ export const adminRouter = createTRPCRouter({
       .from(videos)
       .where(eq(videos.status, "pending"));
 
+    const [nsfwVideos] = await ctx.db
+      .select({ count: sql<number>`count(*)` })
+      .from(videos)
+      .where(eq(videos.isNsfw, true));
+
+    const [toxicComments] = await ctx.db
+      .select({ count: sql<number>`count(*)` })
+      .from(comments)
+      .where(eq(comments.isToxic, true));
+
+    const [hiddenComments] = await ctx.db
+      .select({ count: sql<number>`count(*)` })
+      .from(comments)
+      .where(eq(comments.isHidden, true));
+
     return {
       totalUsers: Number(userCount?.count ?? 0),
       totalVideos: Number(videoCount?.count ?? 0),
@@ -39,6 +54,9 @@ export const adminRouter = createTRPCRouter({
       totalViews: Number(totalViews?.sum ?? 0),
       bannedUsers: Number(bannedUsers?.count ?? 0),
       pendingVideos: Number(pendingVideos?.count ?? 0),
+      nsfwVideos: Number(nsfwVideos?.count ?? 0),
+      toxicComments: Number(toxicComments?.count ?? 0),
+      hiddenComments: Number(hiddenComments?.count ?? 0),
     };
   }),
 

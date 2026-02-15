@@ -36,10 +36,10 @@ export const AuthButton = () => {
       <SignedIn>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 hover:bg-gray-100 rounded-full px-2 py-1 transition-colors">
-              <Avatar className="h-8 w-8">
+            <button className="flex items-center gap-2 hover:bg-accent rounded-lg px-2 py-1.5 transition-colors">
+              <Avatar className="h-7 w-7">
                 <AvatarImage src={user?.imageUrl} alt={user?.fullName || "User"} />
-                <AvatarFallback>
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
                   {user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
@@ -77,7 +77,7 @@ export const AuthButton = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="cursor-pointer text-red-600 focus:text-red-600"
+              className="cursor-pointer text-destructive focus:text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
@@ -90,9 +90,10 @@ export const AuthButton = () => {
         <SignInButton mode="modal">
           <Button
             variant="outline"
-            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-500 border-blue-500/20 rounded-full shadow-none"
+            size="sm"
+            className="text-sm font-medium text-primary hover:text-primary border-primary/20 hover:bg-primary/5 rounded-lg shadow-none gap-1.5"
           >
-            <UserCircleIcon className="mr-1 h-5 w-5" />
+            <UserCircleIcon className="h-4 w-4" />
             Sign in
           </Button>
         </SignInButton>

@@ -2,7 +2,7 @@
 
 import { trpc } from "@/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Video, MessageSquare, Eye, Ban, Clock } from "lucide-react";
+import { Users, Video, MessageSquare, Eye, Ban, Clock, AlertTriangle, Shield, Brain } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = trpc.admin.getStats.useQuery();
@@ -12,7 +12,7 @@ export default function AdminDashboard() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(9)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -69,6 +69,27 @@ export default function AdminDashboard() {
       icon: Clock,
       color: "text-yellow-600",
       bgColor: "bg-yellow-100",
+    },
+    {
+      title: "NSFW Flagged",
+      value: stats?.nsfwVideos ?? 0,
+      icon: AlertTriangle,
+      color: "text-pink-600",
+      bgColor: "bg-pink-100",
+    },
+    {
+      title: "Toxic Comments",
+      value: stats?.toxicComments ?? 0,
+      icon: Shield,
+      color: "text-rose-600",
+      bgColor: "bg-rose-100",
+    },
+    {
+      title: "Auto-Hidden",
+      value: stats?.hiddenComments ?? 0,
+      icon: Brain,
+      color: "text-violet-600",
+      bgColor: "bg-violet-100",
     },
   ];
 
@@ -164,6 +185,20 @@ export default function AdminDashboard() {
                 <span className="flex items-center gap-2 text-green-600">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Operational
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">AI/ML Engine</span>
+                <span className="flex items-center gap-2 text-green-600">
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  Active
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Content Moderation</span>
+                <span className="flex items-center gap-2 text-green-600">
+                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  Monitoring
                 </span>
               </div>
             </div>

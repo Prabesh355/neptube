@@ -1,7 +1,17 @@
 import { z } from "zod";
-import { eq, desc, and, sql, ilike, or } from "drizzle-orm";
+import { eq, desc, and, sql, ilike, or, ne, inArray, lt } from "drizzle-orm";
 import { baseProcedure, createTRPCRouter, protectedProcedure } from "../init";
-import { videos, users, videoLikes } from "@/db/schema";
+import { videos, users, videoLikes, subscriptions, notifications } from "@/db/schema";
+import {
+  generateTags,
+  generateSummary,
+  transcribeVideo,
+  detectNsfw,
+  getRecommendationScores,
+  generateChapters,
+  autoCategorizVideo,
+  calculateTrendingScore,
+} from "@/lib/ai";
 
 export const videosRouter = createTRPCRouter({
   // Get all public videos (feed) with optional search
@@ -15,6 +25,19 @@ export const videosRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const conditions = [eq(videos.visibility, "public")];
+      
+      // Add cursor condition for pagination
+      if (input.cursor) {
+        // Get the createdAt of the cursor video
+        const cursorVideo = await ctx.db
+          .select({ createdAt: videos.createdAt })
+          .from(videos)
+          .where(eq(videos.id, input.cursor))
+          .limit(1);
+        if (cursorVideo[0]) {
+          conditions.push(lt(videos.createdAt, cursorVideo[0].createdAt));
+        }
+      }
       
       // Add search conditions if search query provided
       if (input.search && input.search.trim()) {
@@ -37,6 +60,8 @@ export const videosRouter = createTRPCRouter({
           duration: videos.duration,
           viewCount: videos.viewCount,
           createdAt: videos.createdAt,
+          tags: videos.tags,
+          isNsfw: videos.isNsfw,
           user: {
             id: users.id,
             name: users.name,
@@ -79,6 +104,14 @@ export const videosRouter = createTRPCRouter({
           likeCount: videos.likeCount,
           dislikeCount: videos.dislikeCount,
           createdAt: videos.createdAt,
+          // ML fields
+          tags: videos.tags,
+          aiSummary: videos.aiSummary,
+          transcript: videos.transcript,
+          chapters: videos.chapters,
+          nsfwScore: videos.nsfwScore,
+          isNsfw: videos.isNsfw,
+          commentCount: videos.commentCount,
           user: {
             id: users.id,
             name: users.name,
@@ -112,6 +145,43 @@ export const videosRouter = createTRPCRouter({
         .limit(input.limit);
 
       return userVideos;
+    }),
+
+  // Get channel profile with user info and videos
+  getChannelProfile: baseProcedure
+    .input(z.object({ userId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.db
+        .select({
+          id: users.id,
+          name: users.name,
+          imageURL: users.imageURL,
+          bannerURL: users.bannerURL,
+          description: users.description,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+
+      if (!user[0]) return null;
+
+      const channelVideos = await ctx.db
+        .select({
+          id: videos.id,
+          title: videos.title,
+          thumbnailURL: videos.thumbnailURL,
+          duration: videos.duration,
+          viewCount: videos.viewCount,
+          createdAt: videos.createdAt,
+        })
+        .from(videos)
+        .where(
+          and(eq(videos.userId, input.userId), eq(videos.visibility, "public"))
+        )
+        .orderBy(desc(videos.createdAt));
+
+      return { ...user[0], videos: channelVideos };
     }),
 
   // Get current user's videos (including private)
@@ -154,6 +224,107 @@ export const videosRouter = createTRPCRouter({
           status: "published", // Auto-publish for demo
         })
         .returning();
+
+      const videoId = newVideo[0].id;
+
+      // Run ML processing asynchronously (fire-and-forget)
+      (async () => {
+        try {
+          // 1. Auto-generate tags
+          const tags = await generateTags(
+            input.title,
+            input.description,
+            input.category
+          );
+
+          // 2. Generate AI summary
+          const aiSummary = await generateSummary(
+            input.title,
+            input.description
+          );
+
+          // 3. NSFW detection on thumbnail
+          let nsfwScore = 0;
+          let isNsfw = false;
+          if (input.thumbnailURL) {
+            const nsfw = await detectNsfw(input.thumbnailURL);
+            nsfwScore = nsfw.score;
+            isNsfw = nsfw.isNsfw;
+          }
+
+          // 4. Auto-categorize if no category provided
+          let autoCategory = input.category;
+          if (!autoCategory) {
+            autoCategory = await autoCategorizVideo(input.title, input.description, tags);
+          }
+
+          // Update video with ML results
+          await ctx.db
+            .update(videos)
+            .set({
+              tags: tags.length > 0 ? tags : undefined,
+              aiSummary: aiSummary || undefined,
+              category: autoCategory || undefined,
+              nsfwScore,
+              isNsfw,
+            })
+            .where(eq(videos.id, videoId));
+
+          // 5. Transcription (longer running, separate update)
+          if (input.videoURL) {
+            const transcript = await transcribeVideo(input.videoURL);
+            if (transcript) {
+              // Re-generate summary with transcript for better quality
+              const betterSummary = await generateSummary(
+                input.title,
+                input.description,
+                transcript
+              );
+
+              // 6. Generate chapters from transcript
+              const chapters = await generateChapters(
+                input.title,
+                input.description,
+                transcript,
+                input.duration
+              );
+
+              await ctx.db
+                .update(videos)
+                .set({
+                  transcript,
+                  aiSummary: betterSummary || aiSummary || undefined,
+                  chapters: chapters.length > 0 ? chapters : undefined,
+                })
+                .where(eq(videos.id, videoId));
+            }
+          }
+
+          // 7. Send notification to subscribers
+          if (input.visibility === "public") {
+            const subs = await ctx.db
+              .select({ subscriberId: subscriptions.subscriberId })
+              .from(subscriptions)
+              .where(eq(subscriptions.channelId, ctx.user.id));
+
+            if (subs.length > 0) {
+              await ctx.db.insert(notifications).values(
+                subs.map((sub) => ({
+                  userId: sub.subscriberId,
+                  type: "new_video" as const,
+                  title: "New video",
+                  message: `${ctx.user.name} uploaded "${input.title}"`,
+                  link: `/feed/${videoId}`,
+                  fromUserId: ctx.user.id,
+                  videoId,
+                }))
+              );
+            }
+          }
+        } catch (err) {
+          console.error("ML processing failed for video:", videoId, err);
+        }
+      })();
 
       return newVideo[0];
     }),
@@ -316,5 +487,252 @@ export const videosRouter = createTRPCRouter({
         .limit(1);
 
       return like[0] || null;
+    }),
+
+  // ─── ML Endpoints ───────────────────────────────────────────────────────────
+
+  // Get AI-powered recommendations for a video
+  getRecommendations: baseProcedure
+    .input(
+      z.object({
+        videoId: z.string().uuid(),
+        limit: z.number().min(1).max(20).default(8),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Get source video
+      const sourceVideo = await ctx.db
+        .select()
+        .from(videos)
+        .where(eq(videos.id, input.videoId))
+        .limit(1);
+
+      if (!sourceVideo[0]) return [];
+
+      const source = sourceVideo[0];
+
+      // Get candidate videos (excluding the source)
+      const candidates = await ctx.db
+        .select({
+          id: videos.id,
+          title: videos.title,
+          description: videos.description,
+          thumbnailURL: videos.thumbnailURL,
+          duration: videos.duration,
+          viewCount: videos.viewCount,
+          createdAt: videos.createdAt,
+          tags: videos.tags,
+          user: {
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+          },
+        })
+        .from(videos)
+        .innerJoin(users, eq(videos.userId, users.id))
+        .where(
+          and(eq(videos.visibility, "public"), ne(videos.id, input.videoId))
+        )
+        .orderBy(desc(videos.viewCount))
+        .limit(30);
+
+      if (candidates.length === 0) return [];
+
+      // Score with AI
+      const scores = await getRecommendationScores(
+        source.title,
+        source.description,
+        source.tags,
+        candidates.map((c) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          tags: c.tags,
+        }))
+      );
+
+      // Sort by relevance score and return top N
+      const scoreMap = new Map(scores.map((s) => [s.id, s.score]));
+      return candidates
+        .map((c) => ({ ...c, relevanceScore: scoreMap.get(c.id) ?? 0.1 }))
+        .sort((a, b) => b.relevanceScore - a.relevanceScore)
+        .slice(0, input.limit);
+    }),
+
+  // Trigger transcription for a video
+  transcribe: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const video = await ctx.db
+        .select()
+        .from(videos)
+        .where(and(eq(videos.id, input.id), eq(videos.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!video[0]) throw new Error("Video not found");
+      if (!video[0].videoURL) throw new Error("No video URL");
+      if (video[0].transcript) return { transcript: video[0].transcript };
+
+      const transcript = await transcribeVideo(video[0].videoURL);
+      if (transcript) {
+        // Also regenerate summary with transcript
+        const aiSummary = await generateSummary(
+          video[0].title,
+          video[0].description,
+          transcript
+        );
+
+        await ctx.db
+          .update(videos)
+          .set({ transcript, aiSummary: aiSummary || undefined })
+          .where(eq(videos.id, input.id));
+      }
+
+      return { transcript };
+    }),
+
+  // Re-run ML analysis on a video
+  reAnalyze: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const video = await ctx.db
+        .select()
+        .from(videos)
+        .where(and(eq(videos.id, input.id), eq(videos.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!video[0]) throw new Error("Video not found");
+
+      const tags = await generateTags(
+        video[0].title,
+        video[0].description,
+        video[0].category
+      );
+      const aiSummary = await generateSummary(
+        video[0].title,
+        video[0].description,
+        video[0].transcript
+      );
+
+      let nsfwScore = video[0].nsfwScore ?? 0;
+      let isNsfw = video[0].isNsfw ?? false;
+      if (video[0].thumbnailURL) {
+        const nsfw = await detectNsfw(video[0].thumbnailURL);
+        nsfwScore = nsfw.score;
+        isNsfw = nsfw.isNsfw;
+      }
+
+      await ctx.db
+        .update(videos)
+        .set({
+          tags: tags.length > 0 ? tags : undefined,
+          aiSummary: aiSummary || undefined,
+          nsfwScore,
+          isNsfw,
+        })
+        .where(eq(videos.id, input.id));
+
+      return { tags, aiSummary, nsfwScore, isNsfw };
+    }),
+
+  // Get subscriptions feed
+  getSubscriptionsFeed: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Get channel IDs user is subscribed to
+      const subs = await ctx.db
+        .select({ channelId: subscriptions.channelId })
+        .from(subscriptions)
+        .where(eq(subscriptions.subscriberId, ctx.user.id));
+
+      if (subs.length === 0) return { items: [], subscribedChannels: 0 };
+
+      const channelIds = subs.map((s) => s.channelId);
+
+      const items = await ctx.db
+        .select({
+          id: videos.id,
+          title: videos.title,
+          description: videos.description,
+          thumbnailURL: videos.thumbnailURL,
+          duration: videos.duration,
+          viewCount: videos.viewCount,
+          createdAt: videos.createdAt,
+          tags: videos.tags,
+          isNsfw: videos.isNsfw,
+          user: {
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+          },
+        })
+        .from(videos)
+        .innerJoin(users, eq(videos.userId, users.id))
+        .where(
+          and(
+            eq(videos.visibility, "public"),
+            inArray(videos.userId, channelIds)
+          )
+        )
+        .orderBy(desc(videos.createdAt))
+        .limit(input.limit);
+
+      return { items, subscribedChannels: channelIds.length };
+    }),
+
+  // Get trending videos
+  getTrending: baseProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const allPublic = await ctx.db
+        .select({
+          id: videos.id,
+          title: videos.title,
+          description: videos.description,
+          thumbnailURL: videos.thumbnailURL,
+          duration: videos.duration,
+          viewCount: videos.viewCount,
+          likeCount: videos.likeCount,
+          dislikeCount: videos.dislikeCount,
+          commentCount: videos.commentCount,
+          createdAt: videos.createdAt,
+          tags: videos.tags,
+          isNsfw: videos.isNsfw,
+          user: {
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+          },
+        })
+        .from(videos)
+        .innerJoin(users, eq(videos.userId, users.id))
+        .where(eq(videos.visibility, "public"))
+        .orderBy(desc(videos.createdAt))
+        .limit(100); // Get recent 100 for scoring
+
+      // Score and sort by trending algorithm
+      const scored = allPublic
+        .map((v) => ({
+          ...v,
+          trendingScore: calculateTrendingScore(
+            v.viewCount,
+            v.likeCount,
+            v.dislikeCount,
+            v.commentCount,
+            v.createdAt
+          ),
+        }))
+        .sort((a, b) => b.trendingScore - a.trendingScore)
+        .slice(0, input.limit);
+
+      return scored;
     }),
 });
