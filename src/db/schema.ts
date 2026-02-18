@@ -37,6 +37,13 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "like",
   "subscription",
   "report_resolved",
+  "community_post",
+]);
+
+export const communityPostTypeEnum = pgEnum("community_post_type", [
+  "text",
+  "image",
+  "poll",
 ]);
 export const reportStatusEnum = pgEnum("report_status", [
   "pending",
@@ -97,6 +104,8 @@ export const videos = pgTable("videos", {
   qualityScore: integer("quality_score"),
   nsfwScore: real("nsfw_score"),
   isNsfw: boolean("is_nsfw").default(false),
+  isShort: boolean("is_short").default(false),
+  allowDownload: boolean("allow_download").default(true),
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
@@ -249,6 +258,66 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Community Posts table
+export const communityPosts = pgTable("community_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: communityPostTypeEnum("type").default("text").notNull(),
+  content: text("content").notNull(),
+  imageURL: text("image_url"),
+  likeCount: integer("like_count").default(0).notNull(),
+  commentCount: integer("comment_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Poll Options table (for community posts with polls)
+export const pollOptions = pgTable("poll_options", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id")
+    .notNull()
+    .references(() => communityPosts.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  voteCount: integer("vote_count").default(0).notNull(),
+});
+
+// Poll Votes table
+export const pollVotes = pgTable(
+  "poll_votes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    optionId: uuid("option_id")
+      .notNull()
+      .references(() => pollOptions.id, { onDelete: "cascade" }),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => communityPosts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("poll_votes_user_post_idx").on(t.userId, t.postId)]
+);
+
+// Community Post Likes table
+export const communityPostLikes = pgTable(
+  "community_post_likes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => communityPosts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("community_post_likes_user_post_idx").on(t.userId, t.postId)]
+);
+
 // ─── Relations ───────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -261,6 +330,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   playlists: many(playlists),
   notifications: many(notifications),
   reports: many(reports),
+  communityPosts: many(communityPosts),
+  communityPostLikes: many(communityPostLikes),
+  pollVotes: many(pollVotes),
 }));
 
 export const videosRelations = relations(videos, ({ one, many }) => ({
@@ -368,5 +440,48 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   resolver: one(users, {
     fields: [reports.resolvedBy],
     references: [users.id],
+  }),
+}));
+
+export const communityPostsRelations = relations(communityPosts, ({ one, many }) => ({
+  user: one(users, {
+    fields: [communityPosts.userId],
+    references: [users.id],
+  }),
+  pollOptions: many(pollOptions),
+  likes: many(communityPostLikes),
+}));
+
+export const pollOptionsRelations = relations(pollOptions, ({ one, many }) => ({
+  post: one(communityPosts, {
+    fields: [pollOptions.postId],
+    references: [communityPosts.id],
+  }),
+  votes: many(pollVotes),
+}));
+
+export const pollVotesRelations = relations(pollVotes, ({ one }) => ({
+  user: one(users, {
+    fields: [pollVotes.userId],
+    references: [users.id],
+  }),
+  option: one(pollOptions, {
+    fields: [pollVotes.optionId],
+    references: [pollOptions.id],
+  }),
+  post: one(communityPosts, {
+    fields: [pollVotes.postId],
+    references: [communityPosts.id],
+  }),
+}));
+
+export const communityPostLikesRelations = relations(communityPostLikes, ({ one }) => ({
+  user: one(users, {
+    fields: [communityPostLikes.userId],
+    references: [users.id],
+  }),
+  post: one(communityPosts, {
+    fields: [communityPostLikes.postId],
+    references: [communityPosts.id],
   }),
 }));

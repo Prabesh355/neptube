@@ -8,13 +8,14 @@ import {
     SidebarMenuButton , 
     SidebarMenuItem 
 } from "@/components/ui/sidebar";
-import { Clock, ThumbsUp, ListVideo, UserCircle } from "lucide-react";
+import { Clock, ThumbsUp, ListVideo, UserCircle, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 
 const items = [
     { title:"Your Channel", url:"/channel", icon:UserCircle, auth:true },
+    { title:"Watch Later", url:"/playlists?tab=watch-later", icon:BookmarkPlus, auth:true },
     { title:"History", url:"/history", icon:Clock, auth:true },
     { title:"Liked videos", url:"/liked", icon:ThumbsUp, auth:true },
     { title:"All playlists", url:"/playlists", icon:ListVideo, auth:true },

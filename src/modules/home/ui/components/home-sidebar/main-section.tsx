@@ -7,15 +7,17 @@ import {
     SidebarMenuButton , 
     SidebarMenuItem 
 } from "@/components/ui/sidebar";
-import { TrendingUp, Home, Video } from "lucide-react"
+import { TrendingUp, Home, Video, Zap, Users } from "lucide-react"
 import Link from "next/link";
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 
 const items = [
     { title:"Home", url:"/", icon:Home },
+    { title:"Shorts", url:"/shorts", icon:Zap },
     { title:"Subscriptions", url:"/feed/subscriptions", icon:Video, auth:true },
     { title:"Trending", url:"/feed/trending", icon:TrendingUp },
+    { title:"Community", url:"/community", icon:Users, auth:true },
 ];
 
 export const MainSection = () => {

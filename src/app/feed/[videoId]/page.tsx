@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import Link from "next/link";
@@ -41,6 +41,10 @@ import {
   BarChart3,
   Wand2,
   Bot,
+  PictureInPicture2,
+  Download,
+  BookmarkPlus,
+  BookmarkCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -360,6 +364,7 @@ function RecommendationCard({
 export default function VideoPage() {
   const params = useParams();
   const videoId = params.videoId as string;
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [showTranscript, setShowTranscript] = useState(false);
   const [showSummary, setShowSummary] = useState(true);
   const [showChapters, setShowChapters] = useState(false);
@@ -371,6 +376,7 @@ export default function VideoPage() {
   const [reportDescription, setReportDescription] = useState("");
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [isPiPActive, setIsPiPActive] = useState(false);
   const { isSignedIn } = useAuth();
   const utils = trpc.useUtils();
 
@@ -399,6 +405,17 @@ export default function VideoPage() {
     undefined,
     { enabled: !!isSignedIn && playlistOpen }
   );
+
+  const { data: isInWatchLater } = trpc.playlists.isInWatchLater.useQuery(
+    { videoId },
+    { enabled: !!isSignedIn && !!videoId }
+  );
+
+  const addToWatchLater = trpc.playlists.addToWatchLater.useMutation({
+    onSuccess: () => {
+      utils.playlists.isInWatchLater.invalidate({ videoId });
+    },
+  });
 
   const { data: commentSummary } = trpc.videos.summarizeVideoComments.useQuery(
     { videoId },
@@ -463,6 +480,42 @@ export default function VideoPage() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const seekToChapter = useCallback((time: number) => {
+    const el = videoRef.current;
+    if (el) {
+      el.currentTime = time;
+      el.play().catch(() => {});
+    }
+  }, []);
+
+  const togglePiP = useCallback(async () => {
+    const el = videoRef.current;
+    if (!el) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPiPActive(false);
+      } else {
+        await el.requestPictureInPicture();
+        setIsPiPActive(true);
+      }
+    } catch (err) {
+      console.error("PiP failed:", err);
+    }
+  }, []);
+
+  const handleDownload = useCallback(() => {
+    if (!video?.videoURL) return;
+    const a = document.createElement("a");
+    a.href = video.videoURL;
+    a.download = `${video.title || "video"}.mp4`;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [video?.videoURL, video?.title]);
+
   if (isLoading) {
     return (
       <div className="max-w-5xl mx-auto p-4 space-y-4">
@@ -522,6 +575,7 @@ export default function VideoPage() {
             <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-primary/0 via-primary/0 to-primary/0 group-hover/player:from-primary/30 group-hover/player:via-transparent group-hover/player:to-[hsl(190,80%,50%)]/30 transition-all duration-700 pointer-events-none" />
             {video.videoURL ? (
               <video
+                ref={videoRef}
                 src={video.videoURL}
                 controls
                 autoPlay
@@ -533,8 +587,8 @@ export default function VideoPage() {
                   <track
                     kind="captions"
                     src={subtitleDataUrl}
-                    srcLang="en"
-                    label="English"
+                    srcLang={video.language || "en"}
+                    label={video.languageName || "English"}
                     default
                   />
                 )}
@@ -777,6 +831,48 @@ export default function VideoPage() {
                   </DialogContent>
                 </Dialog>
               )}
+
+              {/* Watch Later */}
+              {isSignedIn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 rounded-lg"
+                  onClick={() => addToWatchLater.mutate({ videoId })}
+                  disabled={addToWatchLater.isPending}
+                >
+                  {isInWatchLater ? (
+                    <BookmarkCheck className="h-4 w-4 text-primary" />
+                  ) : (
+                    <BookmarkPlus className="h-4 w-4" />
+                  )}
+                  {isInWatchLater ? "Saved" : "Watch Later"}
+                </Button>
+              )}
+
+              {/* Picture-in-Picture */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 rounded-lg"
+                onClick={togglePiP}
+              >
+                <PictureInPicture2 className="h-4 w-4" />
+                {isPiPActive ? "Exit PiP" : "PiP"}
+              </Button>
+
+              {/* Download */}
+              {video.videoURL && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 rounded-lg"
+                  onClick={handleDownload}
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              )}
             </div>
           </div>
 
@@ -872,15 +968,16 @@ export default function VideoPage() {
               {showChapters && (
                 <div className="px-4 pb-4 space-y-1.5">
                   {video.chapters.map((chapter, i) => (
-                    <div
+                    <button
                       key={i}
-                      className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => seekToChapter(chapter.time)}
+                      className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-primary/10 cursor-pointer transition-colors w-full text-left"
                     >
                       <span className="text-xs font-mono text-primary min-w-[40px]">
                         {formatChapterTime(chapter.time)}
                       </span>
                       <span className="text-sm">{chapter.title}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

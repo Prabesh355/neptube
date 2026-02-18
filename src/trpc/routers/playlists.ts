@@ -4,6 +4,104 @@ import { createTRPCRouter, protectedProcedure, baseProcedure } from "../init";
 import { playlists, playlistVideos, videos, users } from "@/db/schema";
 
 export const playlistsRouter = createTRPCRouter({
+  // Get or create Watch Later playlist
+  getOrCreateWatchLater: protectedProcedure.mutation(async ({ ctx }) => {
+    // Look for existing Watch Later playlist
+    const existing = await ctx.db
+      .select()
+      .from(playlists)
+      .where(and(eq(playlists.userId, ctx.user.id), eq(playlists.name, "Watch Later")))
+      .limit(1);
+
+    if (existing[0]) return existing[0];
+
+    const newPlaylist = await ctx.db
+      .insert(playlists)
+      .values({
+        name: "Watch Later",
+        description: "Videos you want to watch later",
+        visibility: "private",
+        userId: ctx.user.id,
+      })
+      .returning();
+
+    return newPlaylist[0];
+  }),
+
+  // Add to Watch Later (convenience method)
+  addToWatchLater: protectedProcedure
+    .input(z.object({ videoId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Find or create Watch Later playlist
+      let watchLater = await ctx.db
+        .select()
+        .from(playlists)
+        .where(and(eq(playlists.userId, ctx.user.id), eq(playlists.name, "Watch Later")))
+        .limit(1);
+
+      if (!watchLater[0]) {
+        watchLater = await ctx.db
+          .insert(playlists)
+          .values({
+            name: "Watch Later",
+            description: "Videos you want to watch later",
+            visibility: "private",
+            userId: ctx.user.id,
+          })
+          .returning();
+      }
+
+      const playlistId = watchLater[0].id;
+
+      // Check if already in playlist
+      const existing = await ctx.db
+        .select()
+        .from(playlistVideos)
+        .where(and(eq(playlistVideos.playlistId, playlistId), eq(playlistVideos.videoId, input.videoId)))
+        .limit(1);
+
+      if (existing[0]) {
+        // Remove from Watch Later (toggle)
+        await ctx.db.delete(playlistVideos).where(eq(playlistVideos.id, existing[0].id));
+        return { added: false, playlistId };
+      }
+
+      // Get max position
+      const maxPos = await ctx.db
+        .select({ max: sql<number>`coalesce(max(position), -1)` })
+        .from(playlistVideos)
+        .where(eq(playlistVideos.playlistId, playlistId));
+
+      await ctx.db.insert(playlistVideos).values({
+        playlistId,
+        videoId: input.videoId,
+        position: (maxPos[0]?.max ?? -1) + 1,
+      });
+
+      return { added: true, playlistId };
+    }),
+
+  // Check if video is in Watch Later
+  isInWatchLater: protectedProcedure
+    .input(z.object({ videoId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const watchLater = await ctx.db
+        .select()
+        .from(playlists)
+        .where(and(eq(playlists.userId, ctx.user.id), eq(playlists.name, "Watch Later")))
+        .limit(1);
+
+      if (!watchLater[0]) return false;
+
+      const existing = await ctx.db
+        .select()
+        .from(playlistVideos)
+        .where(and(eq(playlistVideos.playlistId, watchLater[0].id), eq(playlistVideos.videoId, input.videoId)))
+        .limit(1);
+
+      return !!existing[0];
+    }),
+
   // Get my playlists
   getMyPlaylists: protectedProcedure.query(async ({ ctx }) => {
     const myPlaylists = await ctx.db
