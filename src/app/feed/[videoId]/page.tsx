@@ -29,7 +29,6 @@ import {
   ListPlus,
   Clock,
   MessageSquareText,
-  Captions,
   Loader2,
   Heart,
   Angry,

@@ -171,6 +171,7 @@ export default function AdminVideosPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-24 h-14 bg-gray-200 rounded overflow-hidden flex-shrink-0">
                         {video.thumbnailURL ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={video.thumbnailURL}
                             alt={video.title}

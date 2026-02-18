@@ -10,7 +10,7 @@ export function BannedCheck({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useAuth();
   
   // Only query if user is signed in - use getByClerkId to avoid protected procedure
-  const { data: currentUser, isLoading } = trpc.users.getByClerkId.useQuery(
+  trpc.users.getByClerkId.useQuery(
     { clerkId: "" }, // Will be overridden by enabled condition
     { enabled: false } // Disabled by default
   );

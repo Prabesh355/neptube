@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { UserCircleIcon, LogOut, User, Video } from "lucide-react";
 import {
-  UserButton,
   SignInButton,
   SignedIn,
   SignedOut,
@@ -23,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const AuthButton = () => {
   const { signOut } = useClerk();
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const router = useRouter();
 
   const handleSignOut = async () => {

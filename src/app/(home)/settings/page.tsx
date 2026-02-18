@@ -4,7 +4,6 @@ import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { UploadDropzone } from "@/lib/uploadthing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +15,6 @@ export default function EditProfilePage() {
   const updateProfile = trpc.users.updateProfile.useMutation();
 
   const [name, setName] = useState(user?.name || "");
-  const [description, setDescription] = useState(user?.description || "");
   const [bannerUrl, setBannerUrl] = useState(user?.bannerURL || "");
   const [imageUrl, setImageUrl] = useState(user?.imageURL || "");
   const [isSubmitting, setIsSubmitting] = useState(false);

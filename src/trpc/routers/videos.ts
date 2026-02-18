@@ -14,8 +14,6 @@ import {
   autoCategorizVideo,
   calculateTrendingScore,
   summarizeComments,
-  detectSpam,
-  detectEmotion,
   detectLanguage,
   extractKeywords,
   scoreContentQuality,
