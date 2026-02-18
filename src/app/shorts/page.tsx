@@ -19,7 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function formatCount(count: number): string {
+function formatCount(count?: number | null): string {
+  if (count == null) return "0";
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
   return count.toString();
@@ -89,8 +90,7 @@ function ShortCard({
           loop
           muted={muted}
           playsInline
-          className="w-full h-full object-contain cursor-pointer"
-          onClick={togglePlay}
+          className="w-full h-full object-contain"
           poster={video.thumbnailURL || undefined}
         />
       ) : (
@@ -99,9 +99,15 @@ function ShortCard({
         </div>
       )}
 
-      {/* Pause overlay */}
+      {/* Click overlay for play/pause */}
+      <div
+        className="absolute inset-0 z-10 cursor-pointer"
+        onClick={togglePlay}
+      />
+
+      {/* Pause icon overlay */}
       {!playing && isActive && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
           <div className="bg-black/40 rounded-full p-4">
             <Play className="h-12 w-12 text-white" fill="white" />
           </div>
@@ -109,7 +115,7 @@ function ShortCard({
       )}
 
       {/* Right sidebar actions */}
-      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 z-30">
         {/* Like */}
         <button
           className="flex flex-col items-center gap-1"
@@ -184,7 +190,7 @@ function ShortCard({
       </div>
 
       {/* Bottom info */}
-      <div className="absolute bottom-4 left-4 right-20">
+      <div className="absolute bottom-4 left-4 right-20 z-30">
         <Link href={`/channel/${video.user.id}`} className="flex items-center gap-2 mb-2">
           <Avatar className="h-9 w-9 border-2 border-white">
             <AvatarImage src={video.user.imageURL} />
@@ -296,42 +302,45 @@ export default function ShortsPage() {
 
   return (
     <div className="flex items-center justify-center h-[calc(100vh-56px)] relative">
-      {/* Navigation arrows */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full bg-background/80 backdrop-blur-sm"
-          onClick={goUp}
-          disabled={currentIndex === 0}
+      {/* Shorts container + nav wrapper */}
+      <div className="relative flex items-center gap-4">
+        {/* Shorts container */}
+        <div
+          ref={containerRef}
+          className="w-[380px] h-[680px] overflow-y-scroll snap-y snap-mandatory scrollbar-hide rounded-2xl"
+          style={{ scrollSnapType: "y mandatory" }}
         >
-          <ChevronUp className="h-5 w-5" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-full bg-background/80 backdrop-blur-sm"
-          onClick={goDown}
-          disabled={currentIndex === allVideos.length - 1}
-        >
-          <ChevronDown className="h-5 w-5" />
-        </Button>
-      </div>
+          {allVideos.map((video, index) => (
+            <div key={video.id} className="w-full h-[680px] snap-center">
+              <ShortCard
+                video={video as unknown as ShortVideo}
+                isActive={index === currentIndex}
+              />
+            </div>
+          ))}
+        </div>
 
-      {/* Shorts container */}
-      <div
-        ref={containerRef}
-        className="w-[380px] h-[680px] overflow-y-scroll snap-y snap-mandatory scrollbar-hide rounded-2xl"
-        style={{ scrollSnapType: "y mandatory" }}
-      >
-        {allVideos.map((video, index) => (
-          <div key={video.id} className="w-full h-[680px] snap-center">
-            <ShortCard
-              video={video as unknown as ShortVideo}
-              isActive={index === currentIndex}
-            />
-          </div>
-        ))}
+        {/* Navigation arrows — outside the video card */}
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full bg-background/80 backdrop-blur-sm"
+            onClick={goUp}
+            disabled={currentIndex === 0}
+          >
+            <ChevronUp className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full bg-background/80 backdrop-blur-sm"
+            onClick={goDown}
+            disabled={currentIndex === allVideos.length - 1}
+          >
+            <ChevronDown className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
