@@ -20,6 +20,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +59,7 @@ function YouTubeComment({
     content: string;
     likeCount: number;
     createdAt: Date;
-    user: { id: string; name: string; imageURL: string };
+    user: { id: string; clerkId: string; name: string; imageURL: string };
   };
   videoId: string;
 }) {
@@ -66,6 +68,8 @@ function YouTubeComment({
   const [showReplies, setShowReplies] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [showReplyInput, setShowReplyInput] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
 
   const { data: replies } = trpc.youtube.getCommentReplies.useQuery(
     { parentId: comment.id },
@@ -91,6 +95,16 @@ function YouTubeComment({
     },
   });
 
+  const editComment = trpc.youtube.editComment.useMutation({
+    onSuccess: () => {
+      setIsEditing(false);
+      utils.youtube.getComments.invalidate({ youtubeVideoId: videoId });
+    },
+    onError: (error) => {
+      alert(error.message || "Your edited comment could not be saved.");
+    },
+  });
+
   return (
     <div className="flex gap-3">
       <Avatar className="h-8 w-8 flex-shrink-0">
@@ -107,6 +121,44 @@ function YouTubeComment({
           </span>
         </div>
         <p className="text-sm mt-1 whitespace-pre-wrap">{comment.content}</p>
+
+        {/* Inline edit form */}
+        {isEditing && (
+          <div className="mt-2 space-y-2">
+            <Textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="min-h-[60px] text-sm resize-none"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={!editText.trim() || editText.trim() === comment.content || editComment.isPending}
+                onClick={() =>
+                  editComment.mutate({
+                    commentId: comment.id,
+                    content: editText.trim(),
+                  })
+                }
+                className="gap-1.5"
+              >
+                {editComment.isPending ? "Saving..." : "Save"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditText(comment.content);
+                }}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 mt-2">
           <button
             onClick={() => setShowReplyInput(!showReplyInput)}
@@ -114,7 +166,19 @@ function YouTubeComment({
           >
             Reply
           </button>
-          {clerkUser && (
+          {clerkUser && comment.user.clerkId === clerkUser.id && (
+            <button
+              onClick={() => {
+                setIsEditing(!isEditing);
+                setEditText(comment.content);
+              }}
+              className="text-xs text-muted-foreground hover:text-blue-500 transition"
+              title="Edit comment"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {clerkUser && comment.user.clerkId === clerkUser.id && (
             <button
               onClick={() => deleteComment.mutate({ commentId: comment.id })}
               className="text-xs text-muted-foreground hover:text-red-500 transition"

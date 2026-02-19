@@ -1635,60 +1635,40 @@ function round2(n: number): number {
 // ─── Instant Profanity / Bad-Word Filter ─────────────────────────────────────
 
 /**
- * A comprehensive list of slurs, hate speech, and highly offensive terms.
- * This runs instantly (no API call) and catches the most obvious abuse.
- * Words are checked as whole-word matches to avoid false positives.
+ * Severe words that are ALWAYS blocked even as substrings.
+ * These are unambiguous slurs/profanity that should never appear in comments.
  */
-const PROFANITY_LIST: string[] = [
-  // Common profanity / vulgar
-  "fuck", "fucker", "fucking", "fucked", "fck", "fuk", "fuc",
+const SEVERE_WORDS: string[] = [
+  "fuck", "fucker", "fucking", "fucked", "fck", "fuk", "fuc", "f u c k",
   "shit", "shitty", "bullshit", "shitting",
-  "ass", "asshole", "arse", "arsehole",
+  "asshole", "arsehole",
   "bitch", "bitches", "bitchy",
-  "damn", "dammit", "goddamn",
   "bastard", "bastards",
-  "dick", "dickhead",
-  "cock", "cocksucker",
+  "dickhead",
+  "cocksucker",
   "cunt", "cunts",
-  "whore", "slut", "hoe",
-  "piss", "pissed",
-  "crap", "crappy",
-  // Hate speech / slurs
+  "whore", "slut",
   "nigger", "nigga", "n1gger", "n1gga",
-  "faggot", "fag", "fagg",
+  "faggot", "fag",
   "retard", "retarded",
   "tranny",
   "chink", "gook", "wetback", "spic", "kike",
-  // Threats / violence
-  "kill yourself", "kys", "die", "go die",
+  "kill yourself", "kys",
   "rape", "rapist",
-  // Harassment
-  "stfu", "gtfo", "lmfao", "idiot", "moron", "loser", "dumbass", "stupid",
-  "trash", "garbage", "pathetic", "worthless", "useless",
-  // Leet-speak / evasion variants
-  "f*ck", "f**k", "s**t", "sh*t", "b*tch", "a**hole", "a**",
-  "d!ck", "c0ck", "b!tch", "4ss",
+  "stfu", "gtfo", "dumbass",
 ];
-
-/** Pre-build regex patterns for fast matching */
-const PROFANITY_PATTERNS: RegExp[] = PROFANITY_LIST.map((word) => {
-  // Escape special regex characters
-  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Match as a whole word (word boundary or start/end of string)
-  return new RegExp(`(?:^|\\b|\\s)${escaped}(?:\\b|\\s|$)`, "i");
-});
 
 /**
  * Instantly checks if text contains profanity / hate speech.
- * No API call — uses a local word list with regex matching.
- * Also catches common leet-speak evasion patterns.
+ * No API call — uses simple substring matching on normalized text.
+ * Catches common evasion patterns (leet-speak, repeated chars, separators).
  */
 export function containsProfanity(text: string): boolean {
-  // Normalize: lowercase, collapse repeated chars (e.g., fuuuck -> fuck)
+  // Normalize: lowercase, collapse repeated chars, strip evasion tricks
   const normalized = text
     .toLowerCase()
-    .replace(/(.)\1{2,}/g, "$1$1") // Collapse 3+ repeated chars to 2
-    .replace(/[_\-\.]/g, "")       // Remove common separators used to evade
+    .replace(/(.)\1{2,}/g, "$1$1") // fuuuck -> fuck
+    .replace(/[_\-\.\/\\,;:!?*#]+/g, "") // strip separators
     .replace(/0/g, "o")
     .replace(/1/g, "i")
     .replace(/3/g, "e")
@@ -1697,8 +1677,12 @@ export function containsProfanity(text: string): boolean {
     .replace(/@/g, "a")
     .replace(/\$/g, "s");
 
-  for (const pattern of PROFANITY_PATTERNS) {
-    if (pattern.test(normalized) || pattern.test(text)) {
+  // Also check with all spaces removed (catches "f u c k")
+  const noSpaces = normalized.replace(/\s+/g, "");
+
+  for (const word of SEVERE_WORDS) {
+    const w = word.toLowerCase();
+    if (normalized.includes(w) || noSpaces.includes(w)) {
       return true;
     }
   }
