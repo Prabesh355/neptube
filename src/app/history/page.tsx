@@ -6,6 +6,7 @@ import { trpc } from "@/trpc/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NoWatchHistory } from "@/components/empty-state";
 
 // VideoCard component for history/liked videos
 function VideoCard({ video, type }: { 
@@ -170,17 +171,7 @@ function WatchHistoryTab() {
   }
 
   if (!data?.length) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-        <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Clock className="h-12 w-12 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-semibold mb-2">No watch history yet</h2>
-        <p className="text-muted-foreground">
-          Videos you watch will appear here
-        </p>
-      </div>
-    );
+    return <NoWatchHistory />;
   }
 
   return (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NoPlaylists } from "@/components/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -120,15 +121,7 @@ export default function PlaylistsPage() {
           ))}
         </div>
       ) : !playlists || playlists.length === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
-          <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <ListVideo className="h-10 w-10 text-primary/60" />
-          </div>
-          <h2 className="text-lg font-semibold mb-1">No playlists yet</h2>
-          <p className="text-muted-foreground text-sm mb-4">
-            Create a playlist to organize your favorite videos.
-          </p>
-        </div>
+        <NoPlaylists />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {playlists.map((playlist) => (

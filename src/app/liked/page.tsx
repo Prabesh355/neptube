@@ -6,6 +6,7 @@ import { trpc } from "@/trpc/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NoLikedVideos } from "@/components/empty-state";
 
 // VideoCard component for liked videos
 function VideoCard({ video }: { 
@@ -165,17 +166,7 @@ function LikedVideosContent() {
   }
 
   if (!data?.length) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-        <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-          <Heart className="h-12 w-12 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-semibold mb-2">No liked videos yet</h2>
-        <p className="text-muted-foreground">
-          Videos you like will appear here
-        </p>
-      </div>
-    );
+    return <NoLikedVideos />;
   }
 
   return (

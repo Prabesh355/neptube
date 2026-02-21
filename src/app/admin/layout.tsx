@@ -11,6 +11,7 @@ import {
   Shield,
   ArrowLeft,
   Flag,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const adminNavItems = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/videos", label: "Videos", icon: Video },
   { href: "/admin/reports", label: "Reports", icon: Flag },
+  { href: "/admin/activity", label: "Activity Log", icon: Activity },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

@@ -78,6 +78,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useMiniPlayer } from "@/components/mini-player";
 import { WhyRecommended } from "@/components/why-recommended";
+import { toast } from "sonner";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -179,7 +180,9 @@ function CommentReplies({
       setShowReplyForm(false);
       utils.comments.getReplies.invalidate({ parentId });
       utils.comments.getByVideo.invalidate({ videoId });
+      toast.success("Reply posted!");
     },
+    onError: (err) => toast.error(err.message || "Failed to post reply"),
   });
 
   const handleReplySubmit = (e: React.FormEvent) => {
@@ -320,7 +323,9 @@ function CommentSection({ videoId }: { videoId: string }) {
     onSuccess: () => {
       setContent("");
       utils.comments.getByVideo.invalidate({ videoId });
+      toast.success("Comment posted!");
     },
+    onError: (err) => toast.error(err.message || "Failed to post comment"),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -708,7 +713,9 @@ export default function VideoPage() {
   const addToWatchLater = trpc.playlists.addToWatchLater.useMutation({
     onSuccess: () => {
       utils.playlists.isInWatchLater.invalidate({ videoId });
+      toast.success("Added to Watch Later");
     },
+    onError: () => toast.error("Failed to add to Watch Later"),
   });
 
   const { data: commentSummary } = trpc.videos.summarizeVideoComments.useQuery(
@@ -743,7 +750,9 @@ export default function VideoPage() {
       utils.subscriptions.getCount.invalidate({
         channelId: video?.user?.id ?? "",
       });
+      toast.success("Subscription updated!");
     },
+    onError: () => toast.error("Failed to update subscription"),
   });
 
   const likeVideo = trpc.videos.toggleLike.useMutation({
@@ -758,14 +767,18 @@ export default function VideoPage() {
       setReportOpen(false);
       setReportReason("");
       setReportDescription("");
+      toast.success("Report submitted. We'll review it soon.");
     },
+    onError: () => toast.error("Failed to submit report"),
   });
 
   const addToPlaylist = trpc.playlists.addVideo.useMutation({
     onSuccess: () => {
       setPlaylistOpen(false);
       setSelectedPlaylist("");
+      toast.success("Added to playlist");
     },
+    onError: () => toast.error("Failed to add to playlist"),
   });
 
   const addToHistory = trpc.history.addToHistory.useMutation();

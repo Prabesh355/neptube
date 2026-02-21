@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { eq, desc, sql, and, like, or } from "drizzle-orm";
+import { eq, desc, sql, and, like, or, gte } from "drizzle-orm";
 import { createTRPCRouter, adminProcedure } from "../init";
-import { users, videos, comments } from "@/db/schema";
+import { users, videos, comments, reports } from "@/db/schema";
 
 export const adminRouter = createTRPCRouter({
   // Get dashboard statistics
@@ -467,5 +467,200 @@ export const adminRouter = createTRPCRouter({
         .set({ isNsfw: input.isNsfw, updatedAt: new Date() })
         .where(eq(videos.id, input.videoId));
       return { success: true };
+    }),
+
+  // Get recent activity timeline (aggregated from existing data)
+  getRecentActivity: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(50),
+        days: z.number().min(1).max(90).default(7),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const limit = input?.limit ?? 50;
+      const days = input?.days ?? 7;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      // Fetch recent data in parallel
+      const [
+        recentBans,
+        recentReports,
+        recentToxicComments,
+        recentPendingVideos,
+        recentNsfwVideos,
+        recentUsers,
+      ] = await Promise.all([
+        // Recently banned users
+        ctx.db
+          .select({
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+            banReason: users.banReason,
+            updatedAt: users.updatedAt,
+          })
+          .from(users)
+          .where(and(eq(users.isBanned, true), gte(users.updatedAt, since)))
+          .orderBy(desc(users.updatedAt))
+          .limit(limit),
+
+        // Recent reports
+        ctx.db
+          .select({
+            id: reports.id,
+            targetType: reports.targetType,
+            targetId: reports.targetId,
+            reason: reports.reason,
+            status: reports.status,
+            createdAt: reports.createdAt,
+            reporterName: users.name,
+          })
+          .from(reports)
+          .leftJoin(users, eq(reports.reporterId, users.id))
+          .where(gte(reports.createdAt, since))
+          .orderBy(desc(reports.createdAt))
+          .limit(limit),
+
+        // Recent toxic comments
+        ctx.db
+          .select({
+            id: comments.id,
+            content: comments.content,
+            toxicityScore: comments.toxicityScore,
+            createdAt: comments.createdAt,
+            userName: users.name,
+          })
+          .from(comments)
+          .leftJoin(users, eq(comments.userId, users.id))
+          .where(and(eq(comments.isToxic, true), gte(comments.createdAt, since)))
+          .orderBy(desc(comments.createdAt))
+          .limit(limit),
+
+        // Recent pending videos
+        ctx.db
+          .select({
+            id: videos.id,
+            title: videos.title,
+            createdAt: videos.createdAt,
+            userName: users.name,
+          })
+          .from(videos)
+          .leftJoin(users, eq(videos.userId, users.id))
+          .where(and(eq(videos.status, "pending"), gte(videos.createdAt, since)))
+          .orderBy(desc(videos.createdAt))
+          .limit(limit),
+
+        // Recent NSFW flagged videos
+        ctx.db
+          .select({
+            id: videos.id,
+            title: videos.title,
+            nsfwScore: videos.nsfwScore,
+            updatedAt: videos.updatedAt,
+            userName: users.name,
+          })
+          .from(videos)
+          .leftJoin(users, eq(videos.userId, users.id))
+          .where(and(eq(videos.isNsfw, true), gte(videos.updatedAt, since)))
+          .orderBy(desc(videos.updatedAt))
+          .limit(limit),
+
+        // Recent new users
+        ctx.db
+          .select({
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+            createdAt: users.createdAt,
+          })
+          .from(users)
+          .where(gte(users.createdAt, since))
+          .orderBy(desc(users.createdAt))
+          .limit(limit),
+      ]);
+
+      // Merge into a unified timeline
+      type ActivityItem = {
+        id: string;
+        type: "ban" | "report" | "toxic_comment" | "pending_video" | "nsfw_video" | "new_user";
+        title: string;
+        description: string;
+        timestamp: Date;
+        severity: "info" | "warning" | "danger";
+      };
+
+      const activities: ActivityItem[] = [];
+
+      for (const ban of recentBans) {
+        activities.push({
+          id: `ban-${ban.id}`,
+          type: "ban",
+          title: `User banned: ${ban.name}`,
+          description: ban.banReason || "No reason provided",
+          timestamp: ban.updatedAt,
+          severity: "danger",
+        });
+      }
+
+      for (const report of recentReports) {
+        activities.push({
+          id: `report-${report.id}`,
+          type: "report",
+          title: `${report.targetType} reported`,
+          description: `${report.reason} — by ${report.reporterName ?? "Unknown"}`,
+          timestamp: report.createdAt,
+          severity: report.status === "pending" ? "warning" : "info",
+        });
+      }
+
+      for (const tc of recentToxicComments) {
+        activities.push({
+          id: `toxic-${tc.id}`,
+          type: "toxic_comment",
+          title: `Toxic comment by ${tc.userName ?? "Unknown"}`,
+          description: tc.content.slice(0, 120) + (tc.content.length > 120 ? "…" : ""),
+          timestamp: tc.createdAt,
+          severity: "danger",
+        });
+      }
+
+      for (const pv of recentPendingVideos) {
+        activities.push({
+          id: `pending-${pv.id}`,
+          type: "pending_video",
+          title: `Video pending review`,
+          description: `"${pv.title}" by ${pv.userName ?? "Unknown"}`,
+          timestamp: pv.createdAt,
+          severity: "warning",
+        });
+      }
+
+      for (const nv of recentNsfwVideos) {
+        activities.push({
+          id: `nsfw-${nv.id}`,
+          type: "nsfw_video",
+          title: `NSFW flagged video`,
+          description: `"${nv.title}" by ${nv.userName ?? "Unknown"}`,
+          timestamp: nv.updatedAt,
+          severity: "danger",
+        });
+      }
+
+      for (const nu of recentUsers) {
+        activities.push({
+          id: `user-${nu.id}`,
+          type: "new_user",
+          title: `New user joined`,
+          description: nu.name,
+          timestamp: nu.createdAt,
+          severity: "info",
+        });
+      }
+
+      // Sort by timestamp descending
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return activities.slice(0, limit);
     }),
 });

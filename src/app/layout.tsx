@@ -15,10 +15,29 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NepTube - Share Your Videos with the World",
+  title: {
+    default: "NepTube - Share Your Videos with the World",
+    template: "%s | NepTube",
+  },
   description: "NepTube is a video sharing platform where you can upload, watch, and share videos with the world.",
+  keywords: ["video", "streaming", "upload", "share", "neptube", "watch"],
+  authors: [{ name: "NepTube Team" }],
+  creator: "NepTube",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/logo.svg",
+    apple: "/logo.svg",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "NepTube",
+    title: "NepTube - Share Your Videos with the World",
+    description: "Upload, watch, and share videos with the world on NepTube.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NepTube",
+    description: "Upload, watch, and share videos with the world on NepTube.",
   },
 };
 

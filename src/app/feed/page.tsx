@@ -515,6 +515,7 @@ function FeedPage() {
   const searchQuery = searchParams.get("q") || "";
   const [feedMode, setFeedMode] = useState<"explore" | "foryou">("explore");
   const [activeCategory, setActiveCategory] = useState("");
+  const [sortBy, setSortBy] = useState<"relevance" | "latest" | "views">("relevance");
   const [focusMode, setFocusMode] = useState(false);
   const { isSignedIn } = useAuth();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -584,13 +585,20 @@ function FeedPage() {
     return allVideos.filter((v) => v.category === activeCategory);
   }, [allVideos, activeCategory]);
 
-  // Sort trending
+  // Sort trending + search sort
   const sortedVideos = useMemo(() => {
     if (activeCategory === "__trending") {
       return [...filteredVideos].sort((a, b) => b.viewCount - a.viewCount);
     }
+    if (searchQuery && sortBy !== "relevance") {
+      return [...filteredVideos].sort((a, b) => {
+        if (sortBy === "views") return b.viewCount - a.viewCount;
+        if (sortBy === "latest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return 0;
+      });
+    }
     return filteredVideos;
-  }, [filteredVideos, activeCategory]);
+  }, [filteredVideos, activeCategory, searchQuery, sortBy]);
 
   // Split videos for bento layout
   const heroVideo = sortedVideos[0];
@@ -650,10 +658,32 @@ function FeedPage() {
                 {timeMood === "learn" ? "Perfect time for learning" : timeMood === "chill" ? "Sit back and relax" : "Discover something new"}
               </p>
             )}
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {sortedVideos.length} result{sortedVideos.length !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
 
-          {/* Focus Mode Toggle */}
+          {/* Sort + Focus controls */}
           <div className="flex items-center gap-2">
+            {searchQuery && (
+              <div className="flex items-center gap-1 bg-muted/50 rounded-full p-0.5">
+                {(["relevance", "latest", "views"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setSortBy(opt)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 capitalize ${
+                      sortBy === opt
+                        ? "bg-foreground text-background shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {opt === "views" ? "Most viewed" : opt}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               onClick={() => setFocusMode(!focusMode)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 ${

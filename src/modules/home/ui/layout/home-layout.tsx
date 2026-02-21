@@ -4,6 +4,8 @@ import { HomeSidebar } from "../components/home-sidebar";
 import { MiniPlayerProvider } from "@/components/mini-player";
 import { CommandPalette } from "@/components/command-palette";
 import { BottomDock } from "@/components/bottom-dock";
+import { BackToTop } from "@/components/back-to-top";
+import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 
 interface HomeLayoutProps {
   children: React.ReactNode;
@@ -25,6 +27,8 @@ export const HomeLayout = ({ children }: HomeLayoutProps) => {
               </main>
             </div>
           <BottomDock />
+          <BackToTop />
+          <KeyboardShortcutsDialog />
         </div>
       </MiniPlayerProvider>
     </SidebarProvider>

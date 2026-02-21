@@ -54,6 +54,7 @@ import {
 import { useState, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { ShareDialog } from "@/components/share-dialog";
 
 function formatCount(count?: number | null): string {
   if (!count) return "0";
@@ -106,9 +107,10 @@ function YouTubeComment({
       setShowReplyInput(false);
       utils.youtube.getCommentReplies.invalidate({ parentId: comment.id });
       utils.youtube.getCommentCount.invalidate({ youtubeVideoId: videoId });
+      toast.success("Reply posted!");
     },
     onError: (error) => {
-      alert(error.message || "Your reply could not be posted.");
+      toast.error(error.message || "Your reply could not be posted.");
     },
   });
 
@@ -116,6 +118,7 @@ function YouTubeComment({
     onSuccess: () => {
       utils.youtube.getComments.invalidate({ youtubeVideoId: videoId });
       utils.youtube.getCommentCount.invalidate({ youtubeVideoId: videoId });
+      toast.success("Comment deleted");
     },
   });
 
@@ -123,9 +126,10 @@ function YouTubeComment({
     onSuccess: () => {
       setIsEditing(false);
       utils.youtube.getComments.invalidate({ youtubeVideoId: videoId });
+      toast.success("Comment updated");
     },
     onError: (error) => {
-      alert(error.message || "Your edited comment could not be saved.");
+      toast.error(error.message || "Your edited comment could not be saved.");
     },
   });
 
@@ -354,14 +358,18 @@ export default function YouTubeWatchPage() {
   const addToWatchLater = trpc.playlists.addToWatchLater.useMutation({
     onSuccess: () => {
       utils.playlists.isInWatchLater.invalidate({ videoId });
+      toast.success("Added to Watch Later");
     },
+    onError: () => toast.error("Failed to add to Watch Later"),
   });
 
   const addToPlaylist = trpc.playlists.addVideo.useMutation({
     onSuccess: () => {
       setPlaylistOpen(false);
       setSelectedPlaylist("");
+      toast.success("Added to playlist");
     },
+    onError: () => toast.error("Failed to add to playlist"),
   });
 
   const createReport = trpc.reports.create.useMutation({
@@ -369,7 +377,9 @@ export default function YouTubeWatchPage() {
       setReportOpen(false);
       setReportReason("");
       setReportDescription("");
+      toast.success("Report submitted. We'll review it soon.");
     },
+    onError: () => toast.error("Failed to submit report"),
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────
@@ -382,11 +392,13 @@ export default function YouTubeWatchPage() {
   });
 
   const toggleSubscribe = trpc.youtube.toggleSubscribe.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.youtube.getSubscriptionStatus.invalidate({
         youtubeChannelId: video?.channelId || "",
       });
+      toast.success(data?.subscribed ? "Subscribed!" : "Unsubscribed");
     },
+    onError: () => toast.error("Failed to update subscription"),
   });
 
   const addComment = trpc.youtube.addComment.useMutation({
@@ -394,9 +406,10 @@ export default function YouTubeWatchPage() {
       setCommentText("");
       utils.youtube.getComments.invalidate({ youtubeVideoId: videoId });
       utils.youtube.getCommentCount.invalidate({ youtubeVideoId: videoId });
+      toast.success("Comment posted!");
     },
     onError: (error) => {
-      alert(error.message || "Your comment could not be posted.");
+      toast.error(error.message || "Your comment could not be posted.");
     },
   });
 
@@ -405,6 +418,7 @@ export default function YouTubeWatchPage() {
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
+    toast.success("Link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   }, []);
 
@@ -591,19 +605,16 @@ export default function YouTubeWatchPage() {
                 </div>
 
                 {/* Share */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={handleCopyLink}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Share2 className="h-4 w-4" />
-                  )}
-                  {copied ? "Copied!" : "Share"}
-                </Button>
+                <ShareDialog
+                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/watch/yt/${videoId}`}
+                  title={`${video?.title ?? "Video"} - NepTube`}
+                  trigger={
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Share2 className="h-4 w-4" />
+                      Share
+                    </Button>
+                  }
+                />
 
                 {/* View on NepTube (YouTube) */}
                 <Link
