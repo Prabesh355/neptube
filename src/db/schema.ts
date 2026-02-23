@@ -82,6 +82,7 @@ export const reportTargetEnum = pgEnum("report_target", [
   "video",
   "comment",
   "user",
+  "community_post",
 ]);
 
 // Users table
@@ -378,6 +379,21 @@ export const communityPostLikes = pgTable(
   },
   (t) => [uniqueIndex("community_post_likes_user_post_idx").on(t.userId, t.postId)]
 );
+
+// Community Post Comments table
+export const communityPostComments = pgTable("community_post_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id")
+    .notNull()
+    .references(() => communityPosts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  likeCount: integer("like_count").default(0).notNull(),
+  isHidden: boolean("is_hidden").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // Video feedback table (not interested, etc.)
 export const videoFeedback = pgTable(
@@ -757,6 +773,7 @@ export const communityPostsRelations = relations(communityPosts, ({ one, many })
   }),
   pollOptions: many(pollOptions),
   likes: many(communityPostLikes),
+  comments: many(communityPostComments),
 }));
 
 export const pollOptionsRelations = relations(pollOptions, ({ one, many }) => ({
@@ -789,6 +806,17 @@ export const communityPostLikesRelations = relations(communityPostLikes, ({ one 
   }),
   post: one(communityPosts, {
     fields: [communityPostLikes.postId],
+    references: [communityPosts.id],
+  }),
+}));
+
+export const communityPostCommentsRelations = relations(communityPostComments, ({ one }) => ({
+  user: one(users, {
+    fields: [communityPostComments.userId],
+    references: [users.id],
+  }),
+  post: one(communityPosts, {
+    fields: [communityPostComments.postId],
     references: [communityPosts.id],
   }),
 }));

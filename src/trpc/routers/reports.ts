@@ -10,7 +10,7 @@ export const reportsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
-        targetType: z.enum(["video", "comment", "user"]),
+        targetType: z.enum(["video", "comment", "user", "community_post"]),
         targetId: z.string().uuid(),
         reason: z.string().min(1).max(200),
         description: z.string().max(1000).optional(),
@@ -63,7 +63,7 @@ export const reportsRouter = createTRPCRouter({
         status: z
           .enum(["all", "pending", "reviewed", "resolved", "dismissed"])
           .default("pending"),
-        targetType: z.enum(["all", "video", "comment", "user"]).default("all"),
+        targetType: z.enum(["all", "video", "comment", "user", "community_post"]).default("all"),
       })
     )
     .query(async ({ ctx, input }) => {

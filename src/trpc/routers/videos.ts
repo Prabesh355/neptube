@@ -905,6 +905,60 @@ export const videosRouter = createTRPCRouter({
       return { items, subscribedChannels: channelIds.length };
     }),
 
+  // Get subscription shorts (short videos from subscribed channels)
+  getSubscriptionShorts: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const subs = await ctx.db
+        .select({ channelId: subscriptions.channelId })
+        .from(subscriptions)
+        .where(eq(subscriptions.subscriberId, ctx.user.id));
+
+      if (subs.length === 0) return [];
+
+      const channelIds = subs.map((s) => s.channelId);
+
+      const items = await ctx.db
+        .select({
+          id: videos.id,
+          title: videos.title,
+          thumbnailURL: videos.thumbnailURL,
+          duration: videos.duration,
+          viewCount: videos.viewCount,
+          createdAt: videos.createdAt,
+          user: {
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+          },
+        })
+        .from(videos)
+        .innerJoin(users, eq(videos.userId, users.id))
+        .where(
+          and(
+            eq(videos.visibility, "public"),
+            eq(videos.status, "published"),
+            inArray(videos.userId, channelIds),
+            or(
+              eq(videos.isShort, true),
+              and(
+                sql`${videos.duration} IS NOT NULL`,
+                sql`${videos.duration} > 0`,
+                sql`${videos.duration} <= 60`
+              )
+            )
+          )
+        )
+        .orderBy(desc(videos.createdAt))
+        .limit(input.limit);
+
+      return items;
+    }),
+
   // Get trending videos
   getTrending: baseProcedure
     .input(

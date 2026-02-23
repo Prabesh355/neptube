@@ -15,7 +15,7 @@ import { AdminNavButton } from "./admin-nav-button";
 
 export const HomeNavbar = () => {
   return (
-    <nav className="fixed top-0 left-0 right-0 h-14 bg-background/80 backdrop-blur-xl border-b border-border/50 z-50">
+    <nav className="fixed top-0 left-0 right-0 h-14 bg-background border-b border-border z-50">
       <div className="flex items-center h-full px-2 sm:px-3 gap-1 sm:gap-2 lg:gap-4">
         {/* Menu and logo */}
         <div className="flex items-center flex-shrink-0">

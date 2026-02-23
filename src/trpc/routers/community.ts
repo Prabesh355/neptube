@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure, baseProcedure } from "../init";
-import { communityPosts, pollOptions, pollVotes, communityPostLikes, users, notifications, subscriptions } from "@/db/schema";
+import { communityPosts, pollOptions, pollVotes, communityPostLikes, communityPostComments, users, notifications, subscriptions } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
-import { analyzeToxicity, detectNsfw } from "@/lib/ai";
+import { analyzeToxicity, detectNsfw, detectSpam } from "@/lib/ai";
 
 export const communityRouter = createTRPCRouter({
   // Get posts for a channel (public)
@@ -289,5 +289,190 @@ export const communityRouter = createTRPCRouter({
         .limit(1);
 
       return vote[0] || null;
+    }),
+
+  // Check if user has liked a post
+  hasLiked: protectedProcedure
+    .input(z.object({ postId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const like = await ctx.db
+        .select({ id: communityPostLikes.id })
+        .from(communityPostLikes)
+        .where(
+          and(
+            eq(communityPostLikes.postId, input.postId),
+            eq(communityPostLikes.userId, ctx.user.id)
+          )
+        )
+        .limit(1);
+
+      return !!like[0];
+    }),
+
+  // Add a comment to a community post
+  addComment: protectedProcedure
+    .input(
+      z.object({
+        postId: z.string().uuid(),
+        content: z.string().min(1).max(1000),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // AI moderation: check comment for toxicity
+      try {
+        const toxicity = await analyzeToxicity(input.content);
+        if (toxicity.isToxic && toxicity.score > 0.7) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Your comment was flagged by AI moderation for containing inappropriate content. Please revise and try again.",
+          });
+        }
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        console.error("Toxicity check failed, allowing comment:", err);
+      }
+
+      // AI moderation: check for spam
+      try {
+        const spamResult = await detectSpam(input.content);
+        if (spamResult.isSpam) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Your comment was flagged as spam by AI moderation. Please revise and try again.",
+          });
+        }
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        console.error("Spam check failed, allowing comment:", err);
+      }
+
+      // Check that the post exists
+      const post = await ctx.db
+        .select({ id: communityPosts.id, userId: communityPosts.userId })
+        .from(communityPosts)
+        .where(eq(communityPosts.id, input.postId))
+        .limit(1);
+
+      if (!post[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+      }
+
+      const newComment = await ctx.db
+        .insert(communityPostComments)
+        .values({
+          postId: input.postId,
+          userId: ctx.user.id,
+          content: input.content,
+        })
+        .returning();
+
+      // Increment comment count
+      await ctx.db
+        .update(communityPosts)
+        .set({ commentCount: sql`${communityPosts.commentCount} + 1` })
+        .where(eq(communityPosts.id, input.postId));
+
+      // Notify post owner (if commenter is not the post owner)
+      if (post[0].userId !== ctx.user.id) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: post[0].userId,
+            type: "comment" as const,
+            title: "New comment on your post",
+            message: `${ctx.user.name} commented: "${input.content.slice(0, 80)}${input.content.length > 80 ? "..." : ""}"`,
+            link: `/community`,
+            fromUserId: ctx.user.id,
+          });
+        } catch (err) {
+          console.error("Failed to send comment notification:", err);
+        }
+      }
+
+      return newComment[0];
+    }),
+
+  // Get comments for a community post
+  getComments: baseProcedure
+    .input(
+      z.object({
+        postId: z.string().uuid(),
+        limit: z.number().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const comments = await ctx.db
+        .select({
+          id: communityPostComments.id,
+          content: communityPostComments.content,
+          likeCount: communityPostComments.likeCount,
+          isHidden: communityPostComments.isHidden,
+          createdAt: communityPostComments.createdAt,
+          userId: communityPostComments.userId,
+          user: {
+            id: users.id,
+            name: users.name,
+            imageURL: users.imageURL,
+          },
+        })
+        .from(communityPostComments)
+        .innerJoin(users, eq(communityPostComments.userId, users.id))
+        .where(
+          and(
+            eq(communityPostComments.postId, input.postId),
+            eq(communityPostComments.isHidden, false)
+          )
+        )
+        .orderBy(desc(communityPostComments.createdAt))
+        .limit(input.limit);
+
+      return comments;
+    }),
+
+  // Delete a comment (by comment owner or post owner)
+  deleteComment: protectedProcedure
+    .input(z.object({ commentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Fetch the comment and associated post
+      const comment = await ctx.db
+        .select({
+          id: communityPostComments.id,
+          userId: communityPostComments.userId,
+          postId: communityPostComments.postId,
+        })
+        .from(communityPostComments)
+        .where(eq(communityPostComments.id, input.commentId))
+        .limit(1);
+
+      if (!comment[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
+      }
+
+      // Check if user is the comment owner or the post owner
+      const post = await ctx.db
+        .select({ userId: communityPosts.userId })
+        .from(communityPosts)
+        .where(eq(communityPosts.id, comment[0].postId))
+        .limit(1);
+
+      if (comment[0].userId !== ctx.user.id && post[0]?.userId !== ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not authorized to delete this comment",
+        });
+      }
+
+      await ctx.db
+        .delete(communityPostComments)
+        .where(eq(communityPostComments.id, input.commentId));
+
+      // Decrement comment count
+      await ctx.db
+        .update(communityPosts)
+        .set({ commentCount: sql`GREATEST(${communityPosts.commentCount} - 1, 0)` })
+        .where(eq(communityPosts.id, comment[0].postId));
+
+      return { success: true };
     }),
 });

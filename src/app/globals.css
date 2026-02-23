@@ -132,6 +132,18 @@
     box-shadow 0.2s ease;
 }
 
+/* In collapsed sidebar, shrink icon badges to fit */
+[data-collapsible="icon"] .neptube-icon-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+[data-collapsible="icon"] .neptube-nav-item {
+  padding: 8px 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
 /* Nav item styling */
 .neptube-nav-item {
   border-radius: 10px !important;
@@ -178,6 +190,11 @@
     transparent 100%
   );
   margin: 4px 0;
+}
+
+/* Hide divider in collapsed sidebar */
+[data-collapsible="icon"] .neptube-divider {
+  margin: 2px 8px;
 }
 
 /* Premium upgrade card */
