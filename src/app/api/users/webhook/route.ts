@@ -4,6 +4,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 export async function POST(req: Request) {
   const SIGNING_SECRET = process.env.CLERK_SIGNING_SECRET;
@@ -63,6 +64,21 @@ export async function POST(req: Request) {
         name: `${data.first_name} ${data.last_name}`,
         imageURL: data.image_url || "",
       });
+
+      // Notify admins about new user signup
+      try {
+        await notifyAdmins(db, {
+          type: "new_user_signup",
+          priority: "low",
+          title: "New user signed up",
+          message: `${data.first_name} ${data.last_name} just joined NepTube`,
+          link: `/admin/users`,
+          targetType: "user",
+          metadata: { clerkId: data.id, name: `${data.first_name} ${data.last_name}` },
+        });
+      } catch (err) {
+        console.error("Failed to send admin notification for new user:", err);
+      }
 
       console.log(`User created: ${data.id}`);
     } catch (err) {

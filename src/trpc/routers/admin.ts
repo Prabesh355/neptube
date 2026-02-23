@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { eq, desc, sql, and, like, or, gte } from "drizzle-orm";
 import { createTRPCRouter, adminProcedure } from "../init";
-import { users, videos, comments, reports } from "@/db/schema";
+import { users, videos, comments, reports, adminNotifications } from "@/db/schema";
 
 export const adminRouter = createTRPCRouter({
   // Get dashboard statistics
@@ -663,4 +663,89 @@ export const adminRouter = createTRPCRouter({
 
       return activities.slice(0, limit);
     }),
+
+  // ─── Admin Notifications ──────────────────────────────────────────────────
+
+  // Get admin notifications
+  getAdminNotifications: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(30),
+        unreadOnly: z.boolean().default(false),
+        priority: z.enum(["all", "low", "medium", "high", "critical"]).default("all"),
+        type: z.string().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const conditions = [eq(adminNotifications.isDismissed, false)];
+      if (input.unreadOnly) {
+        conditions.push(eq(adminNotifications.isRead, false));
+      }
+      if (input.priority !== "all") {
+        conditions.push(eq(adminNotifications.priority, input.priority));
+      }
+
+      const notifs = await ctx.db
+        .select()
+        .from(adminNotifications)
+        .where(and(...conditions))
+        .orderBy(desc(adminNotifications.createdAt))
+        .limit(input.limit);
+
+      return notifs;
+    }),
+
+  // Get unread admin notification count
+  getAdminNotificationCount: adminProcedure.query(async ({ ctx }) => {
+    const result = await ctx.db
+      .select({ count: sql<number>`count(*)` })
+      .from(adminNotifications)
+      .where(
+        and(
+          eq(adminNotifications.isRead, false),
+          eq(adminNotifications.isDismissed, false)
+        )
+      );
+    return Number(result[0]?.count ?? 0);
+  }),
+
+  // Mark admin notification as read
+  markAdminNotificationRead: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(adminNotifications)
+        .set({ isRead: true })
+        .where(eq(adminNotifications.id, input.id));
+      return { success: true };
+    }),
+
+  // Mark all admin notifications as read
+  markAllAdminNotificationsRead: adminProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(adminNotifications)
+      .set({ isRead: true })
+      .where(eq(adminNotifications.isRead, false));
+    return { success: true };
+  }),
+
+  // Dismiss admin notification
+  dismissAdminNotification: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(adminNotifications)
+        .set({ isDismissed: true })
+        .where(eq(adminNotifications.id, input.id));
+      return { success: true };
+    }),
+
+  // Dismiss all read admin notifications
+  dismissAllReadAdminNotifications: adminProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(adminNotifications)
+      .set({ isDismissed: true })
+      .where(eq(adminNotifications.isRead, true));
+    return { success: true };
+  }),
 });

@@ -5,6 +5,7 @@ import { comments, users, videos, notifications } from "@/db/schema";
 import { analyzeSentiment, detectSpam, detectEmotion, generateReplySuggestions, filterToxicComment } from "@/lib/ai";
 import { rateLimit, COMMENT_RATE_LIMIT } from "@/lib/rate-limit";
 import { TRPCError } from "@trpc/server";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 export const commentsRouter = createTRPCRouter({
   // Get comments for a video
@@ -188,6 +189,26 @@ export const commentsRouter = createTRPCRouter({
           }
         } catch (err) {
           console.error("Failed to send comment notification:", err);
+        }
+      })();
+
+      // Notify admins about new comment (higher priority for toxic/spam)
+      (async () => {
+        try {
+          const isSuspicious = filter.isToxic || spamResult.isSpam;
+          await notifyAdmins(ctx.db, {
+            type: isSuspicious ? (filter.isToxic ? "toxic_comment" : "spam_detected") : "new_comment",
+            priority: isSuspicious ? "high" : "low",
+            title: isSuspicious ? (filter.isToxic ? "Toxic comment detected" : "Spam comment detected") : "New comment posted",
+            message: `${ctx.user.name}: "${input.content.slice(0, 100)}${input.content.length > 100 ? "..." : ""}"`,
+            link: `/admin/comments${filter.isToxic ? "/toxic" : ""}`,
+            actorId: ctx.user.id,
+            targetType: "comment",
+            targetId: newComment[0].id,
+            metadata: { videoId: input.videoId, isToxic: filter.isToxic, isSpam: spamResult.isSpam, toxicityScore: filter.toxicityScore },
+          });
+        } catch (err) {
+          console.error("Failed to send admin notification for comment:", err);
         }
       })();
 

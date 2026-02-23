@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure, baseProcedure } from "../init";
 import { communityPosts, pollOptions, pollVotes, communityPostLikes, communityPostComments, users, notifications, subscriptions } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
 import { analyzeToxicity, detectNsfw, detectSpam } from "@/lib/ai";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 export const communityRouter = createTRPCRouter({
   // Get posts for a channel (public)
@@ -333,6 +334,25 @@ export const communityRouter = createTRPCRouter({
           }
         } catch (err) {
           console.error("Failed to send community post notifications:", err);
+        }
+      })();
+
+      // Notify admins about new community post
+      (async () => {
+        try {
+          await notifyAdmins(ctx.db, {
+            type: "new_community_post",
+            priority: "low",
+            title: "New community post",
+            message: `${ctx.user.name} posted: "${input.content.slice(0, 100)}${input.content.length > 100 ? "..." : ""}"`,
+            link: `/admin/activity`,
+            actorId: ctx.user.id,
+            targetType: "community_post",
+            targetId: newPost[0].id,
+            metadata: { postType: input.type, hasImage: !!input.imageURL, hasPoll: input.type === "poll" },
+          });
+        } catch (err) {
+          console.error("Failed to send admin notification for community post:", err);
         }
       })();
 

@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure, adminProcedure } from "../init";
 import { reports, users } from "@/db/schema";
 import { rateLimit, REPORT_RATE_LIMIT } from "@/lib/rate-limit";
 import { TRPCError } from "@trpc/server";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 export const reportsRouter = createTRPCRouter({
   // Create a report
@@ -50,6 +51,25 @@ export const reportsRouter = createTRPCRouter({
           ...input,
         })
         .returning();
+
+      // Notify admins about new report (high priority)
+      (async () => {
+        try {
+          await notifyAdmins(ctx.db, {
+            type: "new_report",
+            priority: "high",
+            title: `New ${input.targetType} report`,
+            message: `${ctx.user.name} reported a ${input.targetType}: "${input.reason}"`,
+            link: `/admin/reports`,
+            actorId: ctx.user.id,
+            targetType: "report",
+            targetId: newReport[0].id,
+            metadata: { targetType: input.targetType, targetId: input.targetId, reason: input.reason, description: input.description },
+          });
+        } catch (err) {
+          console.error("Failed to send admin notification for report:", err);
+        }
+      })();
 
       return newReport[0];
     }),

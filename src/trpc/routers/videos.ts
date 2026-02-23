@@ -22,6 +22,7 @@ import {
 } from "@/lib/ai";
 import { rateLimit, UPLOAD_RATE_LIMIT, LIKE_RATE_LIMIT, AI_RATE_LIMIT } from "@/lib/rate-limit";
 import { TRPCError } from "@trpc/server";
+import { notifyAdmins } from "@/lib/admin-notify";
 
 export const videosRouter = createTRPCRouter({
   // Get all public videos (feed) with optional search
@@ -522,6 +523,25 @@ export const videosRouter = createTRPCRouter({
           }
         } catch (err) {
           console.error("ML processing failed for video:", videoId, err);
+        }
+      })();
+
+      // Notify admins about new video upload
+      (async () => {
+        try {
+          await notifyAdmins(ctx.db, {
+            type: "new_video_upload",
+            priority: "medium",
+            title: "New video uploaded",
+            message: `${ctx.user.name} uploaded "${input.title}"`,
+            link: `/admin/videos`,
+            actorId: ctx.user.id,
+            targetType: "video",
+            targetId: newVideo[0].id,
+            metadata: { videoTitle: input.title, category: input.category, visibility: input.visibility },
+          });
+        } catch (err) {
+          console.error("Failed to send admin notification for video upload:", err);
         }
       })();
 

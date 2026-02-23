@@ -11,15 +11,15 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(9)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
+                <div className="h-4 bg-muted rounded w-24"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-16"></div>
+                <div className="h-8 bg-muted rounded w-16"></div>
               </CardContent>
             </Card>
           ))}
@@ -33,72 +33,72 @@ export default function AdminDashboard() {
       title: "Total Users",
       value: stats?.totalUsers ?? 0,
       icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-100 dark:bg-blue-900/30",
       href: "/admin/users",
     },
     {
       title: "Total Videos",
       value: stats?.totalVideos ?? 0,
       icon: Video,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
       href: "/admin/videos",
     },
     {
       title: "Total Comments",
       value: stats?.totalComments ?? 0,
       icon: MessageSquare,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-100 dark:bg-purple-900/30",
       href: "/admin/comments",
     },
     {
       title: "Total Views",
       value: stats?.totalViews ?? 0,
       icon: Eye,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
+      color: "text-orange-600 dark:text-orange-400",
+      bgColor: "bg-orange-100 dark:bg-orange-900/30",
       href: null,
     },
     {
       title: "Banned Users",
       value: stats?.bannedUsers ?? 0,
       icon: Ban,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
       href: "/admin/users/banned",
     },
     {
       title: "Pending Videos",
       value: stats?.pendingVideos ?? 0,
       icon: Clock,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-100",
+      color: "text-yellow-600 dark:text-yellow-400",
+      bgColor: "bg-yellow-100 dark:bg-yellow-900/30",
       href: "/admin/videos/pending",
     },
     {
       title: "NSFW Flagged",
       value: stats?.nsfwVideos ?? 0,
       icon: AlertTriangle,
-      color: "text-pink-600",
-      bgColor: "bg-pink-100",
+      color: "text-pink-600 dark:text-pink-400",
+      bgColor: "bg-pink-100 dark:bg-pink-900/30",
       href: "/admin/videos/nsfw",
     },
     {
       title: "Toxic Comments",
       value: stats?.toxicComments ?? 0,
       icon: Shield,
-      color: "text-rose-600",
-      bgColor: "bg-rose-100",
+      color: "text-rose-600 dark:text-rose-400",
+      bgColor: "bg-rose-100 dark:bg-rose-900/30",
       href: "/admin/comments/toxic",
     },
     {
       title: "Auto-Hidden",
       value: stats?.hiddenComments ?? 0,
       icon: Brain,
-      color: "text-violet-600",
-      bgColor: "bg-violet-100",
+      color: "text-violet-600 dark:text-violet-400",
+      bgColor: "bg-violet-100 dark:bg-violet-900/30",
       href: "/admin/comments/hidden",
     },
   ];
@@ -106,8 +106,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
           Overview of your NepTube platform statistics
         </p>
       </div>
@@ -153,13 +153,13 @@ export default function AdminDashboard() {
           <CardContent className="space-y-3">
             <a
               href="/admin/users"
-              className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              className="block p-4 border border-border rounded-lg hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-blue-600" />
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="font-medium">Manage Users</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-foreground">Manage Users</p>
+                  <p className="text-sm text-muted-foreground">
                     View, ban, or change user roles
                   </p>
                 </div>
@@ -167,13 +167,13 @@ export default function AdminDashboard() {
             </a>
             <a
               href="/admin/videos"
-              className="block p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              className="block p-4 border border-border rounded-lg hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Video className="h-5 w-5 text-green-600" />
+                <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="font-medium">Moderate Videos</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-foreground">Moderate Videos</p>
+                  <p className="text-sm text-muted-foreground">
                     Approve, reject, or remove videos
                   </p>
                 </div>
@@ -189,36 +189,36 @@ export default function AdminDashboard() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Database</span>
-                <span className="flex items-center gap-2 text-green-600">
+                <span className="text-muted-foreground">Database</span>
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Connected
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Authentication</span>
-                <span className="flex items-center gap-2 text-green-600">
+                <span className="text-muted-foreground">Authentication</span>
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Active
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">API</span>
-                <span className="flex items-center gap-2 text-green-600">
+                <span className="text-muted-foreground">API</span>
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Operational
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">AI/ML Engine</span>
-                <span className="flex items-center gap-2 text-green-600">
+                <span className="text-muted-foreground">AI/ML Engine</span>
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Active
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Content Moderation</span>
-                <span className="flex items-center gap-2 text-green-600">
+                <span className="text-muted-foreground">Content Moderation</span>
+                <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                   Monitoring
                 </span>

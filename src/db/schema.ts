@@ -85,6 +85,25 @@ export const reportTargetEnum = pgEnum("report_target", [
   "community_post",
 ]);
 
+export const adminNotificationTypeEnum = pgEnum("admin_notification_type", [
+  "new_video_upload",
+  "new_comment",
+  "toxic_comment",
+  "new_report",
+  "new_community_post",
+  "new_user_signup",
+  "video_updated",
+  "nsfw_flagged",
+  "spam_detected",
+]);
+
+export const adminNotificationPriorityEnum = pgEnum("admin_notification_priority", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
+
 // Users table
 export const users = pgTable(
   "users",
@@ -298,6 +317,24 @@ export const notifications = pgTable("notifications", {
   videoId: uuid("video_id").references(() => videos.id, {
     onDelete: "cascade",
   }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Admin Notifications table — notifications for admins about user/creator actions
+export const adminNotifications = pgTable("admin_notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: adminNotificationTypeEnum("type").notNull(),
+  priority: adminNotificationPriorityEnum("priority").default("medium").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").default(false).notNull(),
+  isDismissed: boolean("is_dismissed").default(false).notNull(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  targetType: text("target_type"), // "video" | "comment" | "community_post" | "report" | "user"
+  targetId: uuid("target_id"),
+  metadata: jsonb("metadata"), // extra context (e.g. video title, comment content preview)
+  readBy: text("read_by"), // comma-separated list of admin user IDs who've read it
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
